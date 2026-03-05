@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 100 100">
+  <circle
+    cx="50" cy="50" r="42"
+    fill="none"
+    stroke="#FF661C"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-dasharray="240.1 23.75"
+    transform="rotate(-90 50 50)"
+  />
+  <path
+    d="M 28 50 L 44 66 L 67 43"
+    fill="none"
+    stroke="#FF661C"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="28" cy="50" r="5" fill="#FF661C" />
+  <circle cx="44" cy="66" r="5" fill="#FF661C" />
+  <circle cx="74" cy="36" r="5" fill="#FF661C" />
+</svg>
