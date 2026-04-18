@@ -243,6 +243,7 @@ constraint to be treated as violated. The agent MUST NOT proceed on uncertainty.
 | `oracle_public_key_id` | string | Yes | The `key_id` value identifying the signing key in the oracle's key registry. The verifier MUST match this value against the `public_key_id` field in the fetched attestation and retrieve the corresponding public key from the oracle's `/.well-known/oracle-keys.json` endpoint. |
 | `expected_status` | string | Yes | The attested status value the attestation MUST carry for this constraint to be satisfied. For market state: typically `"OPEN"`. Other values: `"CLOSED"` (for settlement-window checks). MUST NOT be `"UNKNOWN"` or `"HALTED"` — constraints requiring a halted or unknown market state are malformed and MUST be rejected. |
 | `max_attestation_age` | integer | Yes | Maximum age in seconds of the attestation, measured from `issued_at` to the time of verification. MUST be a positive integer. Verifiers MUST reject attestations where `(now − issued_at) > max_attestation_age`, even if `expires_at` has not yet passed. A well-formed constraint MUST include this field; a missing `max_attestation_age` is a malformed constraint and verifiers MUST reject it (see §4.2 Step 1). There is no default value. See §4.6 for rationale. |
+| `stale_cache_fallback_permitted` | boolean | No | Whether verifiers MAY use an expired key registry cache as a last-resort fallback when fresh key registry fetch fails. Verifiers MUST apply a default of `false` when absent. Deployments with strict freshness requirements (e.g., payment execution) MUST NOT set this to `true`. See §6.8 for companion verifier behaviour on fetch failure. |
 
 #### Field Constraints
 
@@ -262,6 +263,11 @@ constraint to be treated as violated. The agent MUST NOT proceed on uncertainty.
   explicit TOCTOU window for each `environment.market_state` constraint. The
   freshness window is the primary exploitable surface (§4.6); silent defaults
   leave that surface undefined at the deployment boundary.
+- `stale_cache_fallback_permitted`, if present, MUST be a strict boolean.
+  Non-boolean values (including string `"false"`, `null`, or numeric) MUST be
+  rejected as malformed per §4.2 Step 1. When absent, verifiers MUST apply a
+  default of `false`; see §6.8 for the companion verifier behaviour on key
+  registry fetch failure.
 
 ### 4.1 Attestation Object Format
 
@@ -327,6 +333,8 @@ function check_environment_market_state(C, now):
     let max_age = C.max_attestation_age
     if max_age < 1:
         return violation("max_attestation_age must be >= 1")
+    if C.stale_cache_fallback_permitted is present and not boolean:
+        return violation("stale_cache_fallback_permitted must be boolean if present: fail-closed")
 
     # Step 2 — Fetch attestation (timeout: 4 seconds)
     let response = http_get(C.attestation_url, timeout=4s)
@@ -769,6 +777,81 @@ is reasonably synchronised with the oracle's clock. A clock skew exceeding
 Implementations SHOULD use NTP-synchronised clocks and SHOULD log
 clock-skew-related failures distinctly to aid diagnosis.
 
+### 6.8 Key Registry Caching and Key Rotation
+
+The oracle key registry URL — `{issuer}/.well-known/oracle-keys.json`,
+derived from the attestation's `issuer` per §4.1 — is the trust root for
+attestation verification (§6.3). Naive implementations that re-fetch the
+key registry on every verification create avoidable load on the oracle
+and expose verifiers to failure modes (rate limits, transient network
+errors) that are not failures of the attestation itself. This section
+defines the conforming caching and rotation behaviour.
+
+**Caching permissibility.** Verifiers MAY cache the key registry fetched
+from `{issuer}/.well-known/oracle-keys.json`. Verifiers SHOULD respect
+the oracle's `Cache-Control` directive when present. When `Cache-Control`
+is absent, verifier-side TTL is implementation-defined, subject to the
+`key_id`-mismatch rule below.
+
+**`key_id`-mismatch as cache bust.** When the verifier encounters an
+attestation whose `public_key_id` is not present as a `key_id` in the
+cached key registry, the verifier MUST bypass the cache and fetch the
+key registry fresh before rejecting the attestation. This ensures
+attestations signed during a key-rotation window are verifiable as soon
+as the new key is published, without waiting for the cache TTL to
+elapse.
+
+**Oracle rotation responsibilities.** Oracles rotating a signing key
+SHOULD publish both the old and new keys in the key registry
+simultaneously during a grace window. The grace window SHOULD exceed
+both:
+
+- The maximum attestation lifetime the oracle will sign with the old
+  `key_id` after starting rotation.
+- The verifier key registry cache TTL the oracle publishes via HTTP
+  `Cache-Control`.
+
+During the grace window, attestations signed with either `key_id` MUST
+verify against their corresponding key entry. After the grace window
+elapses, the oracle MAY remove the old key entry. Verifiers holding a
+stale cache containing only the old key will fetch fresh and observe the
+transition on the next mismatched `key_id`, or at cache expiry,
+whichever comes first.
+
+**Grace-window discoverability.** Oracles SHOULD publish rotation-start
+and grace-window-end timestamps through an auditable channel. The
+channel MAY be out-of-band (release notes, status page, signed rotation
+announcement) or in-band via a key registry top-level metadata field
+(e.g., `rotation_announcement: { rotation_started_at, previous_key_id,
+new_key_id, grace_window_end }`). This specification does not mandate a
+mechanism; the SHOULD is on discoverability, not form. If the working
+group converges on a canonical in-band mechanism, a future revision can
+elevate it to REQUIRED.
+
+**Fail-closed on fetch failure.** If key registry fetch fails (network
+error, non-2xx response, malformed JSON) and no usable cache is
+available, the constraint evaluation MUST produce a violation entry.
+Verifiers MUST NOT fall back to a hard-coded public key as a recovery
+path — the key registry URL is the trust root, and silent fallback
+undermines the §6.3 binding. When `stale_cache_fallback_permitted` is
+`true`, verifiers MAY use an expired cache as a last-resort fallback on
+fresh-fetch failure; when `false` (the default when the field is
+absent), verifiers MUST produce a violation. For mandates where strict
+freshness is required (e.g., payment execution), the field MUST NOT be
+set to `true` (see §4 Field Constraints).
+
+**Per-constraint scope.** Key registry fetch failures are per-constraint.
+A fetch failure on one `environment.market_state` constraint MUST NOT
+short-circuit evaluation of other `environment.*` constraints in the
+mandate; each constraint produces its own violation entry independently.
+This scoping preserves the diagnostic signal needed for dispute
+resolution even when a single oracle endpoint is unreachable.
+
+**Interaction with §6.2 replay cache.** The `receipt_id` dedup cache and
+the key registry cache are independent. The `receipt_id` cache TTL is
+bound by `max_attestation_age + 30s`; the key registry cache TTL is
+bound by oracle cache directives. No cross-dependency.
+
 ---
 
 ## 7. Reference Implementation
@@ -986,6 +1069,7 @@ def check_market_state_constraint(constraint: dict, now: datetime = None) -> dic
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.4-draft | 2026-04-18 | **§6.8 Key Registry Caching and Key Rotation**: new section lifted from PR #22 bb7af90 with terminology adapted to RFC 8615 key registry (JWKS → key registry, kid → key_id, trusted_jwks → issuer-derived registry URL). Grace-window discoverability SHOULD paragraph integrated. **stale_cache_fallback_permitted**: new OPTIONAL boolean field with fail-secure default=false and boolean-type hygiene clause (§4 schema, Field Constraints, §4.2 Step 1, §6.8 companion). Payment-execution deployments MUST NOT set to true. **§6.3 asymmetry**: PR #22 bb7af90's §6.3 JWKS URL migration paragraph intentionally NOT lifted — trust-root binding differs between types (wallet_state: signed L2 trusted_jwks; market_state: issuer-derived registry URL per §6.3's JWKS/RFC-8615 coexistence paragraph). **v0.5 queued**: formalize trust-root-binding as explicit family-charter dimension. Co-drafted with Douglas Borthwick. |
 | 0.3.2-draft | 2026-04-18 | RFC 2119 audit pass, P1 fix. **`max_attestation_age` strictness**: removed absent-case default of 60 seconds from the §4 schema row, the §4 Field Constraints bullet, the §4.2 pseudocode (Step 1), and both JS and Python reference implementations. Missing `max_attestation_age` is now uniformly malformed; verifiers MUST reject per §4.2 Step 1. Closes the v0.2 contradiction between REQUIRED elevation and retained default. **§6.5 Constraint Stripping**: added normative sentence requiring verifiers to reject mandates whose Layer 2 signature does not validate over the full constraint list, and prohibiting acceptance of subset-signed mandates. No architectural changes; no family-wide changes; no Headless Oracle code changes required. |
 | 0.3-draft | 2026-04-18 | Adds §5.5 Family Composition in response to the held-back follow-ups from PR #22 v0.2 review. Co-drafted with Douglas Borthwick (InsumerAPI) over PRs #9 and #22; mirrors PR #22 §5.5 (commit 85cfaa0) with two refinements agreed in [PR #22 discussion](https://github.com/agent-intent/verifiable-intent/pull/22). **Conjunction semantics**: the `environment.*` family is a conjunction; no partial-fulfillment path within the family. **Completeness rule (Gap 1)**: verifiers MUST evaluate every `environment.*` constraint to completion before refusing L3; short-circuit evaluation is non-conforming. Composes with §5.2 ordering. **Per-member disambiguation (Gap 2)**: every violation entry carries both an array-index machine identifier and a per-type human-readable identifier (MIC for `market_state`, `subject_wallet` for `wallet_state`); multi-exchange example in §4.5 is the driving case. **Rationale** presents semantic and architectural arguments as co-equal — conjunction as a family membership criterion, not a per-type design decision. Drafted as standalone block adoptable verbatim in `environment.wallet_state` §5.5. No changes elsewhere in the spec; no verification algorithm, fail-closed, or security-model changes; no Headless Oracle code changes required. |
 | 0.2-draft | 2026-04-16 | Revision coordinating with PR #22 (`environment.wallet_state`, Douglas Borthwick, InsumerAPI). **Namespace framing**: new §2.3 documents the sibling relationship to `environment.wallet_state`; Abstract, §2.1, and §2.2 updated to reflect the `environment.*` family. **Freshness semantics**: `max_age_seconds` renamed to `max_attestation_age` for lockstep alignment with PR #22 §4.6; elevated to REQUIRED with normative default of 60 seconds; new §4.6 documents TOCTOU rationale using market-execution precedents (2010 Flash Crash, circuit breaker races, 2020 WTI crude oil futures) and family-wide semantics. **Algorithm agility**: new §4.7 lifted from PR #22 §4.7 with Ed25519 as MUST-implement and the extension set widened to include ES256, Ed448, ES384, ES512. §4.1 signature-field row updated to reference §4.7. **Composition**: §4.5 expanded with a joint `environment.market_state` + `environment.wallet_state` composition example showing family-wide expressibility. **Cross-references**: §5.1, §5.2, §6.3, §8 Q2, §8 Q6 updated to reference the sibling constraint. Lifecycle sections renumbered (former §2.3 → §2.4, former §2.4 → §2.5). No changes to the core verification algorithm, the fail-closed semantics, or the security model; no Headless Oracle code changes required. |
