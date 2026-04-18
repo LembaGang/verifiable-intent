@@ -242,7 +242,7 @@ constraint to be treated as violated. The agent MUST NOT proceed on uncertainty.
 | `attestation_url` | string (HTTPS URL) | Yes | Endpoint to fetch the signed state attestation from. MUST be an HTTPS URL. The response MUST be a JSON attestation object conforming to §4.1. |
 | `oracle_public_key_id` | string | Yes | The `key_id` value identifying the signing key in the oracle's key registry. The verifier MUST match this value against the `public_key_id` field in the fetched attestation and retrieve the corresponding public key from the oracle's `/.well-known/oracle-keys.json` endpoint. |
 | `expected_status` | string | Yes | The attested status value the attestation MUST carry for this constraint to be satisfied. For market state: typically `"OPEN"`. Other values: `"CLOSED"` (for settlement-window checks). MUST NOT be `"UNKNOWN"` or `"HALTED"` — constraints requiring a halted or unknown market state are malformed and MUST be rejected. |
-| `max_attestation_age` | integer | Yes | Maximum age in seconds of the attestation, measured from `issued_at` to the time of verification. MUST be a positive integer. Verifiers MUST reject attestations where `(now − issued_at) > max_attestation_age`, even if `expires_at` has not yet passed. When absent for backwards compatibility with v0.1, verifiers MUST apply a default of `60`. Mandate issuers SHOULD always include this field explicitly. See §4.6 for rationale. |
+| `max_attestation_age` | integer | Yes | Maximum age in seconds of the attestation, measured from `issued_at` to the time of verification. MUST be a positive integer. Verifiers MUST reject attestations where `(now − issued_at) > max_attestation_age`, even if `expires_at` has not yet passed. A well-formed constraint MUST include this field; a missing `max_attestation_age` is a malformed constraint and verifiers MUST reject it (see §4.2 Step 1). There is no default value. See §4.6 for rationale. |
 
 #### Field Constraints
 
@@ -256,8 +256,12 @@ constraint to be treated as violated. The agent MUST NOT proceed on uncertainty.
   permanently excluded: no well-formed constraint should require that a market
   be unknown or halted before the agent may act.
 - `max_attestation_age` MUST be a positive integer (`>= 1`). Values less than
-  `1` MUST be rejected as malformed. When absent, verifiers MUST apply a
-  default of `60` seconds.
+  `1` MUST be rejected as malformed. A missing `max_attestation_age` field is a
+  malformed constraint and verifiers MUST reject such constraints per §4.2
+  Step 1. There is no default value; all mandate issuers MUST declare an
+  explicit TOCTOU window for each `environment.market_state` constraint. The
+  freshness window is the primary exploitable surface (§4.6); silent defaults
+  leave that surface undefined at the deployment boundary.
 
 ### 4.1 Attestation Object Format
 
@@ -318,7 +322,9 @@ function check_environment_market_state(C, now):
         return violation("Empty oracle_public_key_id: constraint malformed")
     if C.expected_status is "UNKNOWN" or "HALTED":
         return violation("expected_status must not be UNKNOWN or HALTED")
-    let max_age = C.max_attestation_age ?? 60
+    if C.max_attestation_age is absent:
+        return violation("max_attestation_age is REQUIRED; constraint is malformed: fail-closed")
+    let max_age = C.max_attestation_age
     if max_age < 1:
         return violation("max_attestation_age must be >= 1")
 
@@ -742,7 +748,10 @@ fetch. Implementations MUST apply SSRF protections:
 An attacker removing an `environment.market_state` constraint from a Layer 2
 mandate would expand the agent's authority to execute in any market state. This
 attack is prevented by the KB-SD-JWT+KB signature on Layer 2 — any removal of
-constraints from the mandate payload invalidates the user's signature.
+constraints from the mandate payload invalidates the user's signature. Verifiers
+MUST reject any mandate whose Layer 2 signature does not validate over the full
+constraint list as presented; implementations MUST NOT accept mandates where the
+verified signature covers only a subset of the declared constraints.
 
 ### 6.6 UNKNOWN Status Oracle Response
 
@@ -794,8 +803,12 @@ async function checkMarketStateConstraint(constraint, now = new Date()) {
     attestation_url,
     oracle_public_key_id,
     expected_status,
-    max_attestation_age = 60,
+    max_attestation_age,
   } = constraint;
+
+  if (max_attestation_age === undefined) {
+    throw new Error('max_attestation_age is REQUIRED; constraint is malformed: fail-closed');
+  }
 
   // Step 1 — Structural validation
   if (!attestation_url.startsWith('https://')) {
@@ -882,7 +895,9 @@ def check_market_state_constraint(constraint: dict, now: datetime = None) -> dic
     attestation_url = constraint["attestation_url"]
     oracle_public_key_id = constraint["oracle_public_key_id"]
     expected_status = constraint["expected_status"]
-    max_attestation_age = constraint.get("max_attestation_age", 60)
+    if "max_attestation_age" not in constraint:
+        raise ValueError("max_attestation_age is REQUIRED; constraint is malformed: fail-closed")
+    max_attestation_age = constraint["max_attestation_age"]
 
     if not attestation_url.startswith("https://"):
         raise ValueError("Non-HTTPS attestation_url: fail-closed")
@@ -971,6 +986,7 @@ def check_market_state_constraint(constraint: dict, now: datetime = None) -> dic
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.3.2-draft | 2026-04-18 | RFC 2119 audit pass, P1 fix. **`max_attestation_age` strictness**: removed absent-case default of 60 seconds from the §4 schema row, the §4 Field Constraints bullet, the §4.2 pseudocode (Step 1), and both JS and Python reference implementations. Missing `max_attestation_age` is now uniformly malformed; verifiers MUST reject per §4.2 Step 1. Closes the v0.2 contradiction between REQUIRED elevation and retained default. **§6.5 Constraint Stripping**: added normative sentence requiring verifiers to reject mandates whose Layer 2 signature does not validate over the full constraint list, and prohibiting acceptance of subset-signed mandates. No architectural changes; no family-wide changes; no Headless Oracle code changes required. |
 | 0.3-draft | 2026-04-18 | Adds §5.5 Family Composition in response to the held-back follow-ups from PR #22 v0.2 review. Co-drafted with Douglas Borthwick (InsumerAPI) over PRs #9 and #22; mirrors PR #22 §5.5 (commit 85cfaa0) with two refinements agreed in [PR #22 discussion](https://github.com/agent-intent/verifiable-intent/pull/22). **Conjunction semantics**: the `environment.*` family is a conjunction; no partial-fulfillment path within the family. **Completeness rule (Gap 1)**: verifiers MUST evaluate every `environment.*` constraint to completion before refusing L3; short-circuit evaluation is non-conforming. Composes with §5.2 ordering. **Per-member disambiguation (Gap 2)**: every violation entry carries both an array-index machine identifier and a per-type human-readable identifier (MIC for `market_state`, `subject_wallet` for `wallet_state`); multi-exchange example in §4.5 is the driving case. **Rationale** presents semantic and architectural arguments as co-equal — conjunction as a family membership criterion, not a per-type design decision. Drafted as standalone block adoptable verbatim in `environment.wallet_state` §5.5. No changes elsewhere in the spec; no verification algorithm, fail-closed, or security-model changes; no Headless Oracle code changes required. |
 | 0.2-draft | 2026-04-16 | Revision coordinating with PR #22 (`environment.wallet_state`, Douglas Borthwick, InsumerAPI). **Namespace framing**: new §2.3 documents the sibling relationship to `environment.wallet_state`; Abstract, §2.1, and §2.2 updated to reflect the `environment.*` family. **Freshness semantics**: `max_age_seconds` renamed to `max_attestation_age` for lockstep alignment with PR #22 §4.6; elevated to REQUIRED with normative default of 60 seconds; new §4.6 documents TOCTOU rationale using market-execution precedents (2010 Flash Crash, circuit breaker races, 2020 WTI crude oil futures) and family-wide semantics. **Algorithm agility**: new §4.7 lifted from PR #22 §4.7 with Ed25519 as MUST-implement and the extension set widened to include ES256, Ed448, ES384, ES512. §4.1 signature-field row updated to reference §4.7. **Composition**: §4.5 expanded with a joint `environment.market_state` + `environment.wallet_state` composition example showing family-wide expressibility. **Cross-references**: §5.1, §5.2, §6.3, §8 Q2, §8 Q6 updated to reference the sibling constraint. Lifecycle sections renumbered (former §2.3 → §2.4, former §2.4 → §2.5). No changes to the core verification algorithm, the fail-closed semantics, or the security model; no Headless Oracle code changes required. |
 | 0.1-draft | 2026-03-17 | Initial draft. `environment.market_state` constraint type. Ed25519 attestation verification. Fail-closed algorithm. Headless Oracle as reference implementation. Proposed for registration in VI constraint type registry. |
