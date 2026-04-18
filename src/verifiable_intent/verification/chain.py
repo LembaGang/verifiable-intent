@@ -17,12 +17,12 @@ _ALLOWED_ALGS = {"ES256"}
 
 # VCT constants
 _L1_VCT = "https://credentials.mastercard.com/card"
-_L2_CHECKOUT_VCT_OPEN = "mandate.checkout.open"
-_L2_PAYMENT_VCT_OPEN = "mandate.payment.open"
-_L2_CHECKOUT_VCT_FINAL = "mandate.checkout"
-_L2_PAYMENT_VCT_FINAL = "mandate.payment"
-_L3_PAYMENT_VCT = "mandate.payment"
-_L3_CHECKOUT_VCT = "mandate.checkout"
+_L2_CHECKOUT_VCT_OPEN = "mandate.checkout.open.1"
+_L2_PAYMENT_VCT_OPEN = "mandate.payment.open.1"
+_L2_CHECKOUT_VCT_FINAL = "mandate.checkout.1"
+_L2_PAYMENT_VCT_FINAL = "mandate.payment.1"
+_L3_PAYMENT_VCT = "mandate.payment.1"
+_L3_CHECKOUT_VCT = "mandate.checkout.1"
 
 _CHECKOUT_VCTS = {_L2_CHECKOUT_VCT_OPEN, _L2_CHECKOUT_VCT_FINAL}
 _PAYMENT_VCTS = {_L2_PAYMENT_VCT_OPEN, _L2_PAYMENT_VCT_FINAL}

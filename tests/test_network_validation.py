@@ -76,13 +76,13 @@ def test_validate_intent_requires_l3_for_autonomous():
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1.serialize().encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,
@@ -138,13 +138,13 @@ def test_validate_intent_requires_disclosed_l3_payment_mandate():
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1.serialize().encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,
@@ -158,7 +158,7 @@ def test_validate_intent_requires_disclosed_l3_payment_mandate():
     l2_ser = l2.serialize()
     l2_base_jwt = l2_ser.split("~")[0]
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
 
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
@@ -233,13 +233,13 @@ def test_validate_intent_rejects_missing_payment_disclosure():
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1.serialize().encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,
@@ -253,8 +253,8 @@ def test_validate_intent_rejects_missing_payment_disclosure():
     l2_ser = l2.serialize()
     l2_base_jwt = l2_ser.split("~")[0]
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 

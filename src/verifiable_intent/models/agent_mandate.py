@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 class FinalCheckoutMandate:
     """L3b final checkout mandate for merchant."""
 
-    vct: str = "mandate.checkout"
+    vct: str = "mandate.checkout.1"
     checkout_jwt: str = ""  # Merchant-signed JWT with cart items
     checkout_hash: str = ""  # SHA-256 of checkout_jwt (cross-ref to L3a transaction_id)
 
@@ -30,7 +30,7 @@ class FinalCheckoutMandate:
 class FinalPaymentMandate:
     """L3a final payment mandate for network."""
 
-    vct: str = "mandate.payment"
+    vct: str = "mandate.payment.1"
     transaction_id: str = ""  # = checkout_hash (cross-ref to L3b)
     payee: dict = field(default_factory=dict)  # {id, name, website}
     payment_amount: dict = field(default_factory=dict)  # {currency: str, amount: int}

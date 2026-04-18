@@ -64,7 +64,7 @@ def test_verify_chain_requires_l2_sd_hash_when_l1_serialized_provided():
     )
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -74,7 +74,7 @@ def test_verify_chain_requires_l2_sd_hash_when_l1_serialized_provided():
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -130,7 +130,7 @@ def test_verify_chain_requires_l3_sd_hash_when_l2_serialized_provided():
     )
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -141,7 +141,7 @@ def test_verify_chain_requires_l3_sd_hash_when_l2_serialized_provided():
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         payment_instrument=PAYMENT_INSTRUMENT,
         constraints=[PaymentAmountConstraint(currency="USD", min=10000, max=40000)],
@@ -166,8 +166,8 @@ def test_verify_chain_requires_l3_sd_hash_when_l2_serialized_provided():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find disclosures
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -299,12 +299,12 @@ def test_verify_chain_with_issuer_key_still_works():
         mode=MandateMode.IMMEDIATE,
         sd_hash=hash_bytes(l1_ser.encode("ascii")),
         checkout_mandate=CheckoutMandate(
-            vct="mandate.checkout",
+            vct="mandate.checkout.1",
             checkout_jwt=checkout_jwt,
             checkout_hash=c_hash,
         ),
         payment_mandate=PaymentMandate(
-            vct="mandate.payment",
+            vct="mandate.payment.1",
             currency="USD",
             amount=27999,
             payee=MERCHANTS[0],

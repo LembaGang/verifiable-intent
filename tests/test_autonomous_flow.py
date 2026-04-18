@@ -73,7 +73,7 @@ def _build_full_chain():
 
     # L2: User mandate (autonomous)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -84,7 +84,7 @@ def _build_full_chain():
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -110,8 +110,8 @@ def _build_full_chain():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find disclosures in L2
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -271,7 +271,7 @@ class TestAutonomousChainVerification:
         )
         l2_base = chain["l2_ser"].split("~")[0]
         payment_disc = _find_disclosure(
-            chain["l2"], lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open"
+            chain["l2"], lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1"
         )
         merchant_disc = _find_disclosure(
             chain["l2"], lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse"
@@ -302,9 +302,9 @@ class TestAutonomousModelConstruction:
             PaymentMandate(cnf_jwk={"x": "a"}, amount=100)
 
     def test_checkout_mandate_to_dict(self):
-        m = CheckoutMandate(vct="mandate.checkout.open", cnf_jwk={"x": "a"})
+        m = CheckoutMandate(vct="mandate.checkout.open.1", cnf_jwk={"x": "a"})
         d = m.to_dict()
-        assert d["vct"] == "mandate.checkout.open"
+        assert d["vct"] == "mandate.checkout.open.1"
         assert d["cnf"]["jwk"]["x"] == "a"
 
     def test_final_payment_mandate_to_dict(self):
@@ -315,13 +315,13 @@ class TestAutonomousModelConstruction:
             payment_instrument=PAYMENT_INSTRUMENT,
         )
         d = m.to_dict()
-        assert d["vct"] == "mandate.payment"
+        assert d["vct"] == "mandate.payment.1"
         assert d["transaction_id"] == "abc"
         assert d["payment_amount"]["amount"] == 27999
 
     def test_payment_mandate_rejects_removed_fields(self):
         """PaymentMandate no longer accepts recurrence or execution_date (issue #8)."""
         with pytest.raises(TypeError):
-            PaymentMandate(vct="mandate.payment.open", cnf_jwk={"x": "a"}, recurrence="MNTH")
+            PaymentMandate(vct="mandate.payment.open.1", cnf_jwk={"x": "a"}, recurrence="MNTH")
         with pytest.raises(TypeError):
-            PaymentMandate(vct="mandate.payment.open", cnf_jwk={"x": "a"}, execution_date="2026-03-01")
+            PaymentMandate(vct="mandate.payment.open.1", cnf_jwk={"x": "a"}, execution_date="2026-03-01")

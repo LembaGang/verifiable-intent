@@ -73,7 +73,7 @@ def _build_l1_l2():
     l1_ser = l1.serialize()
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -84,7 +84,7 @@ def _build_l1_l2():
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -117,7 +117,7 @@ class TestReferenceConstraintIssuance:
         l2_claims = resolve_disclosures(l2)
         payment_mandate = None
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
                 payment_mandate = delegate
                 break
 
@@ -138,13 +138,13 @@ class TestReferenceConstraintIssuance:
         l2_claims = resolve_disclosures(l2)
         # Find the checkout disclosure string
         checkout_disc_b64 = _find_disclosure(
-            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open"
+            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
         )
         assert checkout_disc_b64 is not None
 
         # Find the reference constraint
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
                 constraints = delegate.get("constraints", [])
                 for c in constraints:
                     if c.get("type") == "mandate.payment.reference":
@@ -165,13 +165,13 @@ class TestReferenceBindingVerification:
         checkout_disc_b64 = None
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict):
-                if delegate.get("vct") == "mandate.checkout.open":
+                if delegate.get("vct") == "mandate.checkout.open.1":
                     checkout_mandate = delegate
-                elif delegate.get("vct") == "mandate.payment.open":
+                elif delegate.get("vct") == "mandate.payment.open.1":
                     payment_mandate = delegate
 
         checkout_disc_b64 = _find_disclosure(
-            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open"
+            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
         )
         assert checkout_mandate is not None
         assert payment_mandate is not None
@@ -189,9 +189,9 @@ class TestReferenceBindingVerification:
         payment_mandate = None
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict):
-                if delegate.get("vct") == "mandate.checkout.open":
+                if delegate.get("vct") == "mandate.checkout.open.1":
                     checkout_mandate = delegate
-                elif delegate.get("vct") == "mandate.payment.open":
+                elif delegate.get("vct") == "mandate.payment.open.1":
                     payment_mandate = delegate
 
         assert checkout_mandate is not None
@@ -211,13 +211,13 @@ class TestReferenceBindingVerification:
         payment_mandate = None
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict):
-                if delegate.get("vct") == "mandate.checkout.open":
+                if delegate.get("vct") == "mandate.checkout.open.1":
                     checkout_mandate = delegate
-                elif delegate.get("vct") == "mandate.payment.open":
+                elif delegate.get("vct") == "mandate.payment.open.1":
                     payment_mandate = delegate
 
         checkout_disc_b64 = _find_disclosure(
-            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open"
+            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
         )
 
         # Strip the conditional_transaction_id from the reference constraint
@@ -245,8 +245,8 @@ class TestChainWithReferenceBinding:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-        _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+        _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
         _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -292,7 +292,7 @@ class TestChainWithReferenceBinding:
         checkout_disc_indices = []
         for i, disc_val in enumerate(l2.disclosure_values):
             value = disc_val[-1] if len(disc_val) >= 2 else None
-            if isinstance(value, dict) and value.get("vct") == "mandate.checkout.open":
+            if isinstance(value, dict) and value.get("vct") == "mandate.checkout.open.1":
                 checkout_disc_indices.append(i)
         # Also strip item disclosures
         for i, disc_val in enumerate(l2.disclosure_values):
@@ -312,7 +312,7 @@ class TestChainWithReferenceBinding:
         l2_base_jwt = l2_stripped_ser.split("~")[0]
 
         payment_disc = _find_disclosure(
-            l2_stripped, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open"
+            l2_stripped, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1"
         )
         merchant_disc = _find_disclosure(
             l2_stripped, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse"
@@ -379,7 +379,7 @@ class TestChainWithReferenceBinding:
 
         # We need disclosures for L3a but they're stripped from the L2 presentation
         # Just use any valid disclosure strings from the original L2
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
 
         checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
@@ -427,8 +427,10 @@ class TestChainWithReferenceBinding:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-        checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+        checkout_disc = _find_disclosure(
+            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
+        )
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
         item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -479,7 +481,7 @@ class TestChainWithReferenceBinding:
         checkout_disc_indices = []
         for i, disc_val in enumerate(l2.disclosure_values):
             value = disc_val[-1] if len(disc_val) >= 2 else None
-            if isinstance(value, dict) and value.get("vct") == "mandate.checkout.open":
+            if isinstance(value, dict) and value.get("vct") == "mandate.checkout.open.1":
                 checkout_disc_indices.append(i)
         for i, disc_val in enumerate(l2.disclosure_values):
             value = disc_val[-1] if len(disc_val) >= 2 else None
@@ -496,7 +498,7 @@ class TestChainWithReferenceBinding:
         l2_base_jwt = l2_stripped_ser.split("~")[0]
 
         payment_disc = _find_disclosure(
-            l2_stripped, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open"
+            l2_stripped, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1"
         )
         merchant_disc = _find_disclosure(
             l2_stripped, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse"

@@ -75,16 +75,16 @@ at these merchants, for no more than $300").
 In Autonomous mode, constraints appear in the `constraints` array within Layer 2 mandate
 disclosures:
 
-- **Checkout mandate** (`vct: "mandate.checkout.open"`): Contains `mandate.checkout.*`
+- **Checkout mandate** (`vct: "mandate.checkout.open.1"`): Contains `mandate.checkout.*`
   constraints restricting product selection and merchant access.
-- **Payment mandate** (`vct: "mandate.payment.open"`): Contains `mandate.payment.*` constraints
+- **Payment mandate** (`vct: "mandate.payment.open.1"`): Contains `mandate.payment.*` constraints
   restricting payee selection and amount.
 
 See [credential-format.md](credential-format.md) §4.5.1 and §4.5.2 for the
 full mandate payload structures.
 
-**Constraints do NOT appear in Immediate mode credentials** (`vct: "mandate.checkout"` and
-`vct: "mandate.payment"`), where the user directly confirms final values rather than
+**Constraints do NOT appear in Immediate mode credentials** (`vct: "mandate.checkout.1"` and
+`vct: "mandate.payment.1"`), where the user directly confirms final values rather than
 delegating to an agent. Immediate mode mandates contain concrete values (final amounts,
 specific items, checkout JWT) rather than constraint objects.
 
@@ -151,7 +151,7 @@ Every constraint is a JSON object with a REQUIRED `type` field:
 | `type` | string | Yes      | Dot-notation identifier for the constraint kind |
 
 The `type` field uses dot-notation where the prefix identifies the
-functional area (`mandate.checkout` or `payment`) and the suffix identifies the specific
+functional area (`mandate.checkout.1` or `payment`) and the suffix identifies the specific
 constraint within that domain.
 
 ### 3.2 Unknown Fields
@@ -173,7 +173,7 @@ are each validated independently.
 
 ```json
 {
-  "vct": "mandate.checkout.open",
+  "vct": "mandate.checkout.open.1",
   "constraints": [
     {
       "type": "mandate.checkout.allowed_merchants",
@@ -191,7 +191,7 @@ are each validated independently.
 
 ```json
 {
-  "vct": "mandate.payment.open",
+  "vct": "mandate.payment.open.1",
   "constraints": [
     {
       "type": "mandate.payment.allowed_payees",
@@ -225,7 +225,7 @@ registered types.
 
 **Purpose**: Restrict which merchants the agent may use for checkout.
 
-**Appears in**: Checkout mandate (`mandate.checkout.open`) `constraints` array.
+**Appears in**: Checkout mandate (`mandate.checkout.open.1`) `constraints` array.
 
 #### Schema
 
@@ -246,6 +246,15 @@ In serialized SD-JWT form, the `allowed` array MAY contain disclosure
 references (`{"...": "<hash>"}`) instead of inline merchant objects. See
 [credential-format.md](credential-format.md) §9 for the selective disclosure
 mechanism.
+
+> **Design rationale (WYSIWYS):** `website` is REQUIRED and `id` is OPTIONAL
+> because the user sees a human-readable domain (or a merchant name paired
+> with that domain) in the consent surface — what-you-see-is-what-you-sign.
+> An opaque `id` alone would defeat that guarantee: the user cannot confirm
+> a merchant they cannot recognize. Verifiers that receive a merchant
+> identifier from a signed checkout may use `id` as the primary match key for
+> efficiency, but the `website` + `name` pair remains the normative
+> human-anchored identity that the user actually approved.
 
 #### Validation Algorithm
 
@@ -311,14 +320,15 @@ Each hash resolves to a merchant disclosure:
 **Purpose**: Restrict which products the agent may include in a purchase and
 in what quantities.
 
-**Appears in**: Checkout mandate (`mandate.checkout.open`) `constraints` array.
+**Appears in**: Checkout mandate (`mandate.checkout.open.1`) `constraints` array.
 
 #### Schema
 
-| Field   | Type   | REQUIRED | Description                                                                                   |
-| ------- | ------ | -------- | --------------------------------------------------------------------------------------------- |
-| `type`  | string | Yes      | MUST be `"mandate.checkout.line_items"`                                                       |
-| `items` | array  | Yes      | Array of line item entries. Each entry defines a line item the agent is authorized to select. |
+| Field        | Type   | REQUIRED | Description                                                                                                                                                                              |
+| ------------ | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`       | string | Yes      | MUST be `"mandate.checkout.line_items"`                                                                                                                                                  |
+| `items`      | array  | Yes      | Array of line item entries. Each entry defines a line item the agent is authorized to select.                                                                                            |
+| `match_mode` | string | No       | Either `"minimum"` (default) or `"exact"`. Controls whether fulfillment line items may be a subset of `items` or must contain every allowed item. See [Match Modes](#match-modes) below. |
 
 Each **line item entry** in `items` contains:
 
@@ -387,13 +397,35 @@ Given a `mandate.checkout.line_items` constraint `C` and fulfillment field
 This constraint authorizes the agent to select one unit of the Babolat
 Pure Aero (BAB86345) tennis racket for line item "line-1".
 
+#### Match Modes
+
+The optional `match_mode` field controls how fulfillment `line_items` are
+compared to the constraint's `items` allowlist:
+
+- `"minimum"` (default): The fulfillment MAY be a subset of the allowed items.
+  Each fulfillment line item MUST appear in some entry's `acceptable_items`
+  (unless that entry uses a wildcard), and quantity caps (both total and
+  per-item) apply as described in the validation algorithm. Missing allowed
+  items are **not** a violation.
+- `"exact"`: In addition to the subset and quantity checks required by
+  `"minimum"`, every `items` entry MUST be fulfilled — i.e. for each line-item
+  entry, at least one product identifier drawn from its `acceptable_items`
+  MUST appear in the fulfillment `line_items` with `quantity > 0`. A missing
+  allowed item is a **violation**.
+
+`match_mode` only changes whether the verifier requires the fulfillment to
+cover every allowed item; it does not relax the subset or quantity rules in
+either direction. If `match_mode` is absent, verifiers MUST treat the
+constraint as `"minimum"`. Unrecognized values MUST be treated as a
+**violation**.
+
 ---
 
 ### 4.3 `mandate.payment.allowed_payees` — Payee Authorization
 
 **Purpose**: Restrict which payees the agent may direct payment to.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array.
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array.
 
 #### Schema
 
@@ -474,7 +506,7 @@ Each hash resolves to a payee disclosure:
 **Purpose**: Define an acceptable range for the transaction amount the agent
 may authorize.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array.
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array.
 
 #### Schema
 
@@ -534,7 +566,7 @@ totaling $500.00 (L3 value: `50000`) would violate the maximum.
 **Purpose**: Define a cumulative spending limit across all transactions executed under
 this mandate pair. Used with `mandate.payment.agent_recurrence` to cap total spend.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array.
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array.
 
 #### Schema
 
@@ -592,7 +624,7 @@ individual transaction to be at least $10.00.
 recurring basis (e.g., subscriptions, memberships). The merchant manages the recurrence
 schedule after the initial setup transaction.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array (Autonomous mode only).
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array (Autonomous mode only).
 
 **Use cases**: Netflix subscription, gym membership, newspaper subscription, SaaS billing
 
@@ -652,7 +684,7 @@ This constraint authorizes the agent to set up a monthly subscription starting M
 **Purpose**: Authorize an agent to make multiple independent purchases over time within
 defined constraints. The agent creates separate L3 pairs for each purchase occurrence.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array.
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array.
 **Only valid in Autonomous mode.**
 
 **Use cases**: "Book rides to my doctor appointments this month", "Order groceries weekly",
@@ -764,7 +796,7 @@ purchase between $10-$50, and total spending capped at $500.
 checkout mandate, ensuring the payment constraints apply to a specific checkout
 authorization.
 
-**Appears in**: Payment mandate (`mandate.payment.open`) `constraints` array.
+**Appears in**: Payment mandate (`mandate.payment.open.1`) `constraints` array.
 
 #### Schema
 
@@ -888,6 +920,30 @@ VI defines two strictness modes for constraint validation:
 Verifiers MUST support both modes. The default mode MUST be PERMISSIVE.
 Deployment configurations MAY override the default to STRICT based on risk
 policy.
+
+#### Per-Constraint Policy Overrides
+
+Verifiers MAY accept a per-constraint-type policy map that overrides the global
+strictness mode for specific types. This lets a verifier remain PERMISSIVE
+overall while opting into STRICT handling for constraint types it does not
+recognize but wants to explicitly reject, or remain STRICT overall while
+allow-listing specific unknown types as PERMISSIVE skips.
+
+The policy map is a mapping from constraint `type` string to a strictness mode:
+
+```
+{
+  "urn:example:experimental-scope": "STRICT",
+  "com.acme.loyalty-points": "PERMISSIVE"
+}
+```
+
+When a constraint's `type` appears in the policy map, the mapped mode replaces
+the global mode for that constraint only. Open-mandate rejection (§5.4 opening
+paragraph) still applies regardless of policy: unknown constraints in open
+mandates are always rejected, because an unevaluable constraint cannot bound
+agent authority. Policy overrides apply only to unknown-constraint handling;
+they do not change how registered constraint types are validated.
 
 ---
 
@@ -1153,7 +1209,7 @@ from Tennis Warehouse. The Layer 3 mandates contain:
 
 ```json
 {
-  "vct": "mandate.payment",
+  "vct": "mandate.payment.1",
   "payee": {
     "id": "merchant-uuid-1",
     "name": "Tennis Warehouse",
@@ -1175,7 +1231,7 @@ from Tennis Warehouse. The Layer 3 mandates contain:
 
 ```json
 {
-  "vct": "mandate.checkout",
+  "vct": "mandate.checkout.1",
   "checkout_jwt": "eyJhbGci...", // Contains merchant id in decoded payload
   "line_items": [
     {

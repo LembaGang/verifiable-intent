@@ -247,9 +247,9 @@ def build_role_presentations(l2: SdJwt, fallback_serialized: str) -> tuple[str, 
             continue
 
         vct = value.get("vct")
-        if vct == "mandate.checkout.open":
+        if vct == "mandate.checkout.open.1":
             checkout_indices.append(idx)
-        elif vct == "mandate.payment.open":
+        elif vct == "mandate.payment.open.1":
             payment_indices.append(idx)
         elif "name" in value and "website" in value:
             # Merchant entry — network needs for payee validation
@@ -340,8 +340,8 @@ def validate_intent(
     payment_constraints = []
     for delegate in l2_claims.get("delegate_payload", []):
         if isinstance(delegate, dict) and delegate.get("vct") in (
-            "mandate.payment.open",
-            "mandate.payment",
+            "mandate.payment.open.1",
+            "mandate.payment.1",
         ):
             payment_constraints = delegate.get("constraints", [])
             break
@@ -349,7 +349,7 @@ def validate_intent(
     # Extract fulfillment from L3a payment claims
     fulfillment = {}
     for delegate in l3_claims.get("delegate_payload", []):
-        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment":
+        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.1":
             fulfillment = delegate
             break
 
@@ -378,7 +378,7 @@ def validate_intent(
         for c in payment_constraints:
             if c.get("type") == "mandate.payment.allowed_payees":
                 resolved_merchants = []
-                for ref in c.get("allowed_payees", []):
+                for ref in c.get("allowed", []):
                     ref_hash = ref.get("...", "") if isinstance(ref, dict) else ""
                     if ref_hash and ref_hash in disc_by_hash:
                         resolved_merchants.append(disc_by_hash[ref_hash][-1])

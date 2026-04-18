@@ -104,7 +104,7 @@ def main():
         sd_hash=hash_bytes(l1.serialize().encode("ascii")),
         prompt_summary="Buy tennis racket",
         checkout_mandate=CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
@@ -115,7 +115,7 @@ def main():
             ],
         ),
         payment_mandate=PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -129,8 +129,8 @@ def main():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find L2 disclosures
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -218,10 +218,10 @@ def main():
     for d in merchant_delegates:
         if isinstance(d, dict):
             vct = d.get("vct", "unknown")
-            if vct == "mandate.checkout.open":
-                visible("mandate.checkout.open", f"constraints={len(d.get('constraints', []))}")
-            elif vct == "mandate.payment.open":
-                visible("mandate.payment.open", "(SHOULD NOT BE HERE)")
+            if vct == "mandate.checkout.open.1":
+                visible("mandate.checkout.open.1", f"constraints={len(d.get('constraints', []))}")
+            elif vct == "mandate.payment.open.1":
+                visible("mandate.payment.open.1", "(SHOULD NOT BE HERE)")
             elif "id" in d and "title" in d:
                 visible(f"item: {d.get('title', 'unknown')}")
     # What merchant doesn't see
@@ -237,10 +237,10 @@ def main():
     for d in network_delegates:
         if isinstance(d, dict):
             vct = d.get("vct", "unknown")
-            if vct == "mandate.payment.open":
-                visible("mandate.payment.open", f"constraints={len(d.get('constraints', []))}")
-            elif vct == "mandate.checkout.open":
-                visible("mandate.checkout.open", "(SHOULD NOT BE HERE)")
+            if vct == "mandate.payment.open.1":
+                visible("mandate.payment.open.1", f"constraints={len(d.get('constraints', []))}")
+            elif vct == "mandate.checkout.open.1":
+                visible("mandate.checkout.open.1", "(SHOULD NOT BE HERE)")
             elif "name" in d and "website" in d:
                 visible(f"merchant: {d['name']}", d.get("website", ""))
     # What network doesn't see
@@ -258,7 +258,7 @@ def main():
     for d in l3a_delegates:
         if isinstance(d, dict):
             vct = d.get("vct", "")
-            if vct == "mandate.payment":
+            if vct == "mandate.payment.1":
                 pa = d.get("payment_amount", {})
                 visible("final payment", f"amount={pa.get('amount', '?')} cents")
             elif "name" in d:
@@ -271,7 +271,7 @@ def main():
     for d in l3b_delegates:
         if isinstance(d, dict):
             vct = d.get("vct", "")
-            if vct == "mandate.checkout":
+            if vct == "mandate.checkout.1":
                 visible("final checkout", f"checkout_jwt present={bool(d.get('checkout_jwt'))}")
 
     print("\n  Network receives L3a: payment details only")
@@ -304,12 +304,12 @@ def main():
     # Assertions: verify disclosure routing produced correct views
     assert len(merchant_delegates) > 0, "Merchant should see at least one delegate"
     merchant_vcts = [d.get("vct") for d in merchant_delegates if isinstance(d, dict)]
-    assert "mandate.checkout.open" in merchant_vcts, "Merchant should see checkout mandate"
-    assert "mandate.payment.open" not in merchant_vcts, "Merchant should NOT see payment mandate"
+    assert "mandate.checkout.open.1" in merchant_vcts, "Merchant should see checkout mandate"
+    assert "mandate.payment.open.1" not in merchant_vcts, "Merchant should NOT see payment mandate"
 
     network_vcts = [d.get("vct") for d in network_delegates if isinstance(d, dict)]
-    assert "mandate.payment.open" in network_vcts, "Network should see payment mandate"
-    assert "mandate.checkout.open" not in network_vcts, "Network should NOT see checkout mandate"
+    assert "mandate.payment.open.1" in network_vcts, "Network should see payment mandate"
+    assert "mandate.checkout.open.1" not in network_vcts, "Network should NOT see checkout mandate"
 
     assert resolved_l1.get("email") == "alice@example.com", "L1 email should resolve"
 

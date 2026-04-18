@@ -36,15 +36,24 @@ class AllowedMerchantConstraint(Constraint):
 
 @dataclass
 class CheckoutLineItemsConstraint(Constraint):
-    """Line items in checkout mandate. Each item has id, acceptable_items (SD refs), and quantity."""
+    """Line items in checkout mandate. Each item has id, acceptable_items (SD refs), and quantity.
+
+    match_mode controls how fulfillment line items are compared to the
+    constraint's item allowlist:
+      - "minimum" (default): fulfillment items must be within the constraint
+        (subset of allowed_ids and under per-item quantity caps).
+      - "exact": additionally requires every line-item requirement to be
+        fulfilled by at least one acceptable item with quantity > 0.
+    """
 
     items: list[dict] = field(default_factory=list)  # [{id, acceptable_items, quantity}, ...]
+    match_mode: str = "minimum"
 
     def __post_init__(self):
         self.type = "mandate.checkout.line_items"
 
     def to_dict(self) -> dict:
-        d: dict[str, Any] = {"type": self.type, "items": self.items}
+        d: dict[str, Any] = {"type": self.type, "items": self.items, "match_mode": self.match_mode}
         d.update(self.extra_fields)
         return d
 

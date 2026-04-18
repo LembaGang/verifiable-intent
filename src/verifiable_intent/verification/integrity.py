@@ -99,7 +99,7 @@ def verify_l3_cross_reference(
     l3a_delegates = l3_payment_claims.get("delegate_payload", [])
     transaction_id = None
     for delegate in l3a_delegates:
-        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment":
+        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.1":
             transaction_id = delegate.get("transaction_id")
             break
 
@@ -107,7 +107,7 @@ def verify_l3_cross_reference(
     l3b_delegates = l3_checkout_claims.get("delegate_payload", [])
     checkout_hash = None
     for delegate in l3b_delegates:
-        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout":
+        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.1":
             checkout_hash = delegate.get("checkout_hash")
             break
 

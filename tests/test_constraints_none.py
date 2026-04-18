@@ -14,11 +14,11 @@ class TestConstraintsNoneGuard:
     def test_checkout_mandate_constraints_none_no_crash(self):
         """Open checkout mandate with constraints=None must not raise TypeError."""
         checkout = {
-            "vct": "mandate.checkout.open",
+            "vct": "mandate.checkout.open.1",
             "constraints": None,
         }
         payment = {
-            "vct": "mandate.payment.open",
+            "vct": "mandate.payment.open.1",
             "constraints": [
                 {"type": "mandate.payment.reference", "conditional_transaction_id": "abc123"},
             ],
@@ -35,7 +35,7 @@ class TestConstraintsNoneGuard:
     def test_payment_mandate_constraints_none_no_crash(self):
         """Open payment mandate with constraints=None must not raise TypeError."""
         checkout = {
-            "vct": "mandate.checkout.open",
+            "vct": "mandate.checkout.open.1",
             "constraints": [
                 {
                     "type": "mandate.checkout.line_items",
@@ -50,7 +50,7 @@ class TestConstraintsNoneGuard:
             ],
         }
         payment = {
-            "vct": "mandate.payment.open",
+            "vct": "mandate.payment.open.1",
             "constraints": None,
         }
         # Must not raise TypeError — should return a clean validation error instead
@@ -65,13 +65,13 @@ class TestConstraintsNoneGuard:
     def test_pair_autonomous_payment_constraints_none_no_crash(self):
         """_pair_autonomous with constraints=None on payment mandate must not raise TypeError."""
         checkout_info = _MandateInfo(
-            resolved={"vct": "mandate.checkout.open", "constraints": []},
+            resolved={"vct": "mandate.checkout.open.1", "constraints": []},
             ref_hash="ref_hash_abc",
             disc_b64="disc123",
         )
         payment_info = _MandateInfo(
             resolved={
-                "vct": "mandate.payment.open",
+                "vct": "mandate.payment.open.1",
                 "constraints": None,  # <-- the null case
             },
             ref_hash=None,
@@ -87,11 +87,11 @@ class TestConstraintsNoneGuard:
     def test_integrity_verify_l2_reference_binding_constraints_none_no_crash(self):
         """verify_l2_reference_binding with constraints=None must not raise TypeError."""
         checkout_mandate = {
-            "vct": "mandate.checkout.open",
+            "vct": "mandate.checkout.open.1",
             "constraints": [],
         }
         payment_mandate = {
-            "vct": "mandate.payment.open",
+            "vct": "mandate.payment.open.1",
             "constraints": None,  # <-- the null case
         }
         # No reference constraint present — function should return (True, "") gracefully

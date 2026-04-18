@@ -80,12 +80,12 @@ def test_immediate_l2_auto_computes_checkout_hash():
 
     # Intentionally omit checkout_hash and transaction_id — auto-compute should fill them
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         # checkout_hash deliberately NOT set
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],
@@ -116,13 +116,13 @@ def test_immediate_l2_auto_computes_checkout_hash():
         if not isinstance(delegate, dict):
             continue
         vct = delegate.get("vct", "")
-        if vct == "mandate.checkout":
+        if vct == "mandate.checkout.1":
             checkout_found = True
             assert "checkout_hash" in delegate, "Auto-computed checkout_hash missing from checkout mandate disclosure"
             assert delegate["checkout_hash"] == expected_hash, (
                 f"checkout_hash mismatch: {delegate['checkout_hash']} != {expected_hash}"
             )
-        elif vct == "mandate.payment":
+        elif vct == "mandate.payment.1":
             payment_found = True
             assert "transaction_id" in delegate, "Auto-computed transaction_id missing from payment mandate disclosure"
             assert delegate["transaction_id"] == expected_hash, (
@@ -171,7 +171,7 @@ def test_immediate_closed_checkout_missing_checkout_jwt_fails():
     # Create a closed checkout mandate with NO checkout_jwt and NO checkout_hash.
     # Since checkout_jwt is None, auto-compute in create_layer2_immediate will not fire.
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=None,
         checkout_hash=None,
     )
@@ -181,7 +181,7 @@ def test_immediate_closed_checkout_missing_checkout_jwt_fails():
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],
@@ -246,13 +246,13 @@ def test_immediate_closed_payment_missing_required_fields_fails():
 
     # Valid checkout mandate (auto-compute will fill checkout_hash)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
     )
     # Payment mandate deliberately missing payee, currency, amount, payment_instrument.
     # Auto-compute will add transaction_id from checkout_jwt, but the rest stays absent.
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         # payee, currency, amount, payment_instrument all deliberately omitted
     )
     user_mandate = UserMandate(
@@ -306,12 +306,12 @@ def test_immediate_closed_payment_empty_transaction_id_fails():
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
     c_hash = checkout_hash_from_jwt(checkout_jwt)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         transaction_id=c_hash,
         payee=MERCHANTS[0],
         currency="USD",
@@ -332,7 +332,7 @@ def test_immediate_closed_payment_empty_transaction_id_fails():
     # Inject empty transaction_id into the payment mandate disclosure post-issuance
     for disc_val in l2.disclosure_values:
         value = disc_val[-1] if disc_val else None
-        if isinstance(value, dict) and value.get("vct") == "mandate.payment":
+        if isinstance(value, dict) and value.get("vct") == "mandate.payment.1":
             value["transaction_id"] = ""
             break
 
@@ -370,12 +370,12 @@ def test_immediate_closed_payment_empty_currency_fails():
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
     c_hash = checkout_hash_from_jwt(checkout_jwt)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         transaction_id=c_hash,
         payee=MERCHANTS[0],
         currency="",
@@ -427,12 +427,12 @@ def test_immediate_closed_payment_amount_zero_is_valid():
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
     c_hash = checkout_hash_from_jwt(checkout_jwt)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         transaction_id=c_hash,
         payee=MERCHANTS[0],
         currency="USD",
@@ -515,12 +515,12 @@ def test_immediate_closed_payment_empty_payee_fails():
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
     )
     # payee is an empty dict — top-level check passes but nested required fields are missing
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         payee={},
         currency="USD",
         amount=27999,
@@ -576,11 +576,11 @@ def test_immediate_closed_payment_empty_payment_instrument_fails():
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         payee=MERCHANTS[0],
         currency="USD",
         amount=27999,
@@ -653,7 +653,7 @@ def _build_autonomous_chain(
     l1_ser = l1.serialize()
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -664,7 +664,7 @@ def _build_autonomous_chain(
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -687,8 +687,8 @@ def _build_autonomous_chain(
     l2_ser = l2.serialize()
     l2_base_jwt = l2_ser.split("~")[0]
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -870,7 +870,7 @@ def test_l3a_missing_payment_mandate_disclosure_fails_chain():
         l2_payment_serialized=chain["l2_payment_ser"],
     )
     assert not result.valid, "Chain should fail when L3a omits mandate.payment disclosure"
-    assert any("mandate.payment" in e for e in result.errors), (
+    assert any("mandate.payment.1" in e for e in result.errors), (
         f"Error should mention missing mandate.payment disclosure, got: {result.errors}"
     )
 
@@ -887,7 +887,7 @@ def test_l3b_missing_checkout_mandate_disclosure_fails_chain():
         l2_checkout_serialized=chain["l2_checkout_ser"],
     )
     assert not result.valid, "Chain should fail when L3b omits mandate.checkout disclosure"
-    assert any("mandate.checkout" in e for e in result.errors), (
+    assert any("mandate.checkout.1" in e for e in result.errors), (
         f"Error should mention missing mandate.checkout disclosure, got: {result.errors}"
     )
 
@@ -926,3 +926,74 @@ def test_merchant_matching_id_and_name_fallback():
             mandate_merchants,
             disc_hashes,
         )
+
+
+def test_risk_data_round_trips_through_l2_autonomous():
+    """risk_data set on an L2 autonomous PaymentMandate is preserved in the L2 disclosure
+    and survives chain verification.
+    """
+    chain = _build_autonomous_chain()
+    # Sanity: chain builds without risk_data
+    assert chain["l2"] is not None
+
+    # Build a fresh autonomous chain with risk_data on the payment mandate
+    issuer = get_issuer_keys()
+    user = get_user_keys()
+    agent = get_agent_keys()
+    now = int(time.time())
+
+    cred = IssuerCredential(
+        iss="https://www.mastercard.com",
+        sub="userCredentialId",
+        iat=now,
+        exp=now + 365 * 24 * 3600,
+        pan_last_four="1234",
+        scheme="Mastercard",
+        cnf_jwk=user.public_jwk,
+    )
+    l1 = create_layer1(cred, issuer.private_key)
+
+    risk = {"device_id": "android1234", "ip_address": "192.168.1.100"}
+    checkout_mandate = CheckoutMandate(
+        vct="mandate.checkout.open.1",
+        cnf_jwk=agent.public_jwk,
+        cnf_kid="agent-key-1",
+        constraints=[
+            AllowedMerchantConstraint(allowed=MERCHANTS),
+            CheckoutLineItemsConstraint(
+                items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
+            ),
+        ],
+    )
+    payment_mandate = PaymentMandate(
+        vct="mandate.payment.open.1",
+        cnf_jwk=agent.public_jwk,
+        cnf_kid="agent-key-1",
+        payment_instrument=PAYMENT_INSTRUMENT,
+        risk_data=risk,
+        constraints=[PaymentAmountConstraint(currency="USD", min=10000, max=40000)],
+    )
+    user_mandate = UserMandate(
+        nonce="risk-data-nonce",
+        aud="https://www.agent.com",
+        iat=now,
+        mode=MandateMode.AUTONOMOUS,
+        sd_hash=hash_bytes(l1.serialize().encode("ascii")),
+        checkout_mandate=checkout_mandate,
+        payment_mandate=payment_mandate,
+        merchants=MERCHANTS,
+        acceptable_items=ACCEPTABLE_ITEMS,
+    )
+    l2 = create_layer2_autonomous(user_mandate, user.private_key)
+
+    # Verify risk_data is present in the L2 payment mandate disclosure
+    claims = resolve_disclosures(l2)
+    payment_disclosures = [
+        d
+        for d in claims.get("delegate_payload", [])
+        if isinstance(d, dict) and d.get("vct") == "mandate.payment.open.1"
+    ]
+    assert payment_disclosures, "Payment mandate disclosure should be present"
+    assert payment_disclosures[0].get("risk_data") == risk, (
+        "risk_data should round-trip through L2 disclosure resolution"
+    )

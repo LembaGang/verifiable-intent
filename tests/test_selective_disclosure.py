@@ -67,7 +67,7 @@ def _make_full_chain():
     l1 = create_layer1(cred, issuer.private_key)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -75,7 +75,7 @@ def _make_full_chain():
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -101,8 +101,8 @@ def _make_full_chain():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find disclosures in L2
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -174,7 +174,7 @@ def test_l3a_has_payment_disclosure():
         if isinstance(val, dict):
             vcttypes.add(val.get("vct", ""))
 
-    assert "mandate.payment" in vcttypes
+    assert "mandate.payment.1" in vcttypes
 
 
 def test_l3b_has_checkout_disclosure():
@@ -190,7 +190,7 @@ def test_l3b_has_checkout_disclosure():
         if isinstance(val, dict):
             vcttypes.add(val.get("vct", ""))
 
-    assert "mandate.checkout" in vcttypes
+    assert "mandate.checkout.1" in vcttypes
 
 
 def test_l2_autonomous_has_separate_mandate_disclosures():
@@ -210,5 +210,5 @@ def test_l2_autonomous_has_separate_mandate_disclosures():
             vct_types.add(d["vct"])
 
     # Both checkout and payment mandates must be present
-    assert "mandate.checkout.open" in vct_types, "Missing mandate.checkout.open in L2 disclosures"
-    assert "mandate.payment.open" in vct_types, "Missing mandate.payment.open in L2 disclosures"
+    assert "mandate.checkout.open.1" in vct_types, "Missing mandate.checkout.open in L2 disclosures"
+    assert "mandate.payment.open.1" in vct_types, "Missing mandate.payment.open in L2 disclosures"

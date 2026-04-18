@@ -36,6 +36,7 @@ def check_constraints(
     fulfillment: dict,
     mode: StrictnessMode = StrictnessMode.PERMISSIVE,
     is_open_mandate: bool = False,
+    constraint_policy: dict[str, StrictnessMode] | None = None,
 ) -> ConstraintCheckResult:
     """Check if fulfillment values satisfy all constraints.
 
@@ -45,6 +46,11 @@ def check_constraints(
         mode: PERMISSIVE skips unknown types, STRICT fails on them
         is_open_mandate: If True, unknown constraint types are rejected
             regardless of mode (open mandates leave agent authority unbounded)
+        constraint_policy: Optional per-constraint-type overrides. Maps a
+            constraint type string (e.g. "mandate.payment.custom") to a
+            StrictnessMode that applies only for that type. Takes precedence
+            over the global ``mode`` for unknown-constraint handling. Open
+            mandates still reject unknown constraints regardless of policy.
     """
     result = ConstraintCheckResult()
 
@@ -78,7 +84,11 @@ def check_constraints(
         elif isinstance(constraint, (PaymentBudgetConstraint, PaymentRecurrenceConstraint, AgentRecurrenceConstraint)):
             result.checked.append(ctype)  # Network-enforced constraints
         else:
-            if is_open_mandate or mode == StrictnessMode.STRICT:
+            # Determine effective strictness: per-type policy overrides global mode.
+            effective_mode = mode
+            if constraint_policy is not None and ctype in constraint_policy:
+                effective_mode = constraint_policy[ctype]
+            if is_open_mandate or effective_mode == StrictnessMode.STRICT:
                 result.satisfied = False
                 result.violations.append(f"Unknown constraint type: {ctype}")
             else:
@@ -398,3 +408,37 @@ def _check_line_items(c: CheckoutLineItemsConstraint, fulfillment: dict, result:
         if id_cap is not None and item_qty > id_cap:
             result.satisfied = False
             result.violations.append(f"Quantity for item {item_id_val} exceeds per-item limit {id_cap}")
+
+    # match_mode controls whether fulfillment may be a subset of the allowed
+    # line-item requirements or must cover each requirement at least once.
+    match_mode = getattr(c, "match_mode", "minimum")
+    if not isinstance(match_mode, str) or match_mode not in {"minimum", "exact"}:
+        result.satisfied = False
+        result.violations.append(f"line_items match_mode must be 'minimum' or 'exact', got {match_mode!r}")
+        return
+
+    if match_mode == "exact":
+        missing_entries: list[str] = []
+        for item_entry in c.items:
+            if not isinstance(item_entry, dict):
+                continue
+            acceptable_items = item_entry.get("acceptable_items", [])
+            if not isinstance(acceptable_items, list) or not acceptable_items:
+                continue
+
+            entry_id = item_entry.get("id", "?")
+            resolved_ids = {
+                item_id
+                for ai in acceptable_items
+                if isinstance(ai, dict) and "..." not in ai
+                for item_id in [ai.get("id") or ai.get("sku")]
+                if isinstance(item_id, str) and item_id
+            }
+            if resolved_ids and not any(quantity_by_id.get(item_id, 0) > 0 for item_id in resolved_ids):
+                missing_entries.append(f"{entry_id}: {sorted(resolved_ids)}")
+
+        if missing_entries:
+            result.satisfied = False
+            result.violations.append(
+                "match_mode=exact: fulfillment missing required line item(s): " + ", ".join(missing_entries)
+            )

@@ -34,12 +34,12 @@ def _make_immediate_mandate(now: int, user_keys, merchant_keys) -> UserMandate:
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant_keys)
     c_hash = checkout_hash_from_jwt(checkout_jwt)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee={"id": "merchant-wimbledon-1", "name": "Wimbledon Sports"},
@@ -59,7 +59,7 @@ def _make_immediate_mandate(now: int, user_keys, merchant_keys) -> UserMandate:
 def _make_autonomous_mandate(now: int, user_keys, agent_keys) -> UserMandate:
     """Build a minimal valid Autonomous-mode UserMandate."""
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent_keys.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -76,7 +76,7 @@ def _make_autonomous_mandate(now: int, user_keys, agent_keys) -> UserMandate:
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent_keys.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,

@@ -50,13 +50,13 @@ def _build_l2_with_constraints(checkout_constraints=None, payment_constraints=No
     l1 = create_layer1(cred, issuer.private_key)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=checkout_constraints or [],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -96,7 +96,7 @@ class TestMerchantConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.allowed_merchants":
                         assert _count_sd_refs(c, "allowed") == 1, (
@@ -114,7 +114,7 @@ class TestMerchantConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.allowed_merchants":
                         assert _count_sd_refs(c, "allowed") == 2
@@ -134,7 +134,7 @@ class TestItemConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.line_items":
                         items_list = c.get("items", [])
@@ -156,7 +156,7 @@ class TestItemConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.line_items":
                         items_list = c.get("items", [])
@@ -176,7 +176,7 @@ class TestItemConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.line_items":
                         items_list = c.get("items", [])
@@ -196,7 +196,7 @@ class TestPayeeConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.payment.allowed_payees":
                         assert _count_sd_refs(c, "allowed") == 1, (
@@ -214,7 +214,7 @@ class TestPayeeConstraintSubset:
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.payment.allowed_payees":
                         assert _count_sd_refs(c, "allowed") == 2

@@ -51,13 +51,13 @@ def test_build_role_presentations_splits_checkout_and_payment_views():
     )
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -90,11 +90,11 @@ def test_build_role_presentations_splits_checkout_and_payment_views():
     cart_delegates = cart_claims.get("delegate_payload", [])
     payment_delegates = payment_claims.get("delegate_payload", [])
 
-    assert any(d.get("vct") == "mandate.checkout.open" for d in cart_delegates if isinstance(d, dict))
-    assert not any(d.get("vct") == "mandate.payment.open" for d in cart_delegates if isinstance(d, dict))
+    assert any(d.get("vct") == "mandate.checkout.open.1" for d in cart_delegates if isinstance(d, dict))
+    assert not any(d.get("vct") == "mandate.payment.open.1" for d in cart_delegates if isinstance(d, dict))
 
-    assert any(d.get("vct") == "mandate.payment.open" for d in payment_delegates if isinstance(d, dict))
-    assert not any(d.get("vct") == "mandate.checkout.open" for d in payment_delegates if isinstance(d, dict))
+    assert any(d.get("vct") == "mandate.payment.open.1" for d in payment_delegates if isinstance(d, dict))
+    assert not any(d.get("vct") == "mandate.checkout.open.1" for d in payment_delegates if isinstance(d, dict))
 
     # Network-side presentation must include merchant entries used by payment.payee checks.
     assert any(
@@ -125,7 +125,7 @@ def test_build_role_presentations_rejects_missing_payment_disclosures():
         payload={"iss": "test", "delegate_payload": []},
         signature=b"fake",
         disclosures=["bbb"],
-        disclosure_values=[["salt", "key", {"vct": "mandate.checkout.open"}]],
+        disclosure_values=[["salt", "key", {"vct": "mandate.checkout.open.1"}]],
     )
     with pytest.raises(ValueError, match="No payment mandate disclosures found"):
         build_role_presentations(l2_checkout_only, "fallback")

@@ -289,7 +289,7 @@ class TestL2SdArrayContainsMandateHashes:
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1.serialize().encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[
@@ -300,7 +300,7 @@ class TestL2SdArrayContainsMandateHashes:
                 ],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,

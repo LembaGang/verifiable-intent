@@ -56,7 +56,7 @@ def _make_autonomous_l2(l1_ser, payment_mandate, now=None):
     from verifiable_intent import CheckoutMandate
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
@@ -92,7 +92,7 @@ class TestOpenPaymentMandateRequiresPaymentInstrument:
 
         agent = get_agent_keys()
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             # payment_instrument intentionally omitted
@@ -169,7 +169,7 @@ class TestDelegatePayloadNonList:
 
         # Build a valid autonomous L2, then mutate delegate_payload to non-list
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,

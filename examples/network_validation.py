@@ -114,7 +114,7 @@ def main():
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1_ser.encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[
@@ -125,7 +125,7 @@ def main():
                 ],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,
@@ -143,7 +143,7 @@ def main():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find L2 disclosures
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
 
     # Create checkout JWT and hash
@@ -241,13 +241,13 @@ def main():
 
     payment_constraints = []
     for delegate in l2_claims.get("delegate_payload", []):
-        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
             payment_constraints = delegate.get("constraints", [])
             break
 
     fulfillment = {}
     for delegate in l3_claims.get("delegate_payload", []):
-        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment":
+        if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.1":
             fulfillment = delegate
             break
 
