@@ -54,7 +54,7 @@ def test_build_role_presentations_splits_checkout_and_payment_views():
         vct="mandate.checkout.open",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
-        constraints=[AllowedMerchantConstraint(allowed_merchants=MERCHANTS)],
+        constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
     )
     payment_mandate = PaymentMandate(
         vct="mandate.payment.open",

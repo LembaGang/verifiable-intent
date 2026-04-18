@@ -108,7 +108,7 @@ def _check_payment_amount(c: PaymentAmountConstraint, fulfillment: dict, result:
 
     Per AP2 schema, L3a nests amount/currency under a payment_amount object.
     """
-    result.checked.append("payment.amount")
+    result.checked.append("mandate.payment.amount_range")
     payment_amount = fulfillment.get("payment_amount")
     if not isinstance(payment_amount, dict) or not payment_amount:
         result.satisfied = False
@@ -154,44 +154,44 @@ def _check_payment_amount(c: PaymentAmountConstraint, fulfillment: dict, result:
 
 def _check_allowed_payee(c: AllowedPayeeConstraint, fulfillment: dict, result: ConstraintCheckResult):
     """Check payee is in the allowed list."""
-    result.checked.append("payment.allowed_payee")
+    result.checked.append("mandate.payment.allowed_payees")
     payee = fulfillment.get("payee", {})
     if not isinstance(payee, dict) or not payee:
         result.satisfied = False
         result.violations.append("Missing or invalid payee in fulfillment")
         return
 
-    if not isinstance(c.allowed_payees, list):
+    if not isinstance(c.allowed, list):
         result.satisfied = False
         result.violations.append(
-            f"payment.allowed_payee 'allowed_payees' must be a list, got {type(c.allowed_payees).__name__}"
+            f"mandate.payment.allowed_payees 'allowed' must be a list, got {type(c.allowed).__name__}"
         )
         return
-    if not c.allowed_payees:
+    if not c.allowed:
         result.satisfied = False
-        result.violations.append("payment.allowed_payee constraint missing required 'allowed_payees' field")
+        result.violations.append("mandate.payment.allowed_payees constraint missing required 'allowed' field")
         return
 
     # Check if the payee matches any allowed merchant
-    # allowed_payees contains SD disclosure refs in L2; fulfillment should have resolved merchants
+    # allowed contains SD disclosure refs in L2; fulfillment should have resolved merchants
     allowed_merchants = fulfillment.get("allowed_merchants", [])
     if not isinstance(allowed_merchants, list):
         allowed_merchants = []
     if not allowed_merchants:
         # Support inline allowlists when constraints are not represented as SD refs.
-        constraint_allowed = c.allowed_payees if isinstance(c.allowed_payees, list) else []
+        constraint_allowed = c.allowed if isinstance(c.allowed, list) else []
         allowed_merchants = [
             m for m in constraint_allowed if isinstance(m, dict) and "..." not in m and (m.get("id") or m.get("name"))
         ]
     if not allowed_merchants:
         # Distinguish: all SD refs → skip; inline merchants that failed validation → fail
-        source = constraint_allowed if constraint_allowed else c.allowed_payees
+        source = constraint_allowed if constraint_allowed else c.allowed
         all_sd_refs = all(isinstance(m, dict) and "..." in m for m in source)
         if all_sd_refs:
-            result.checked.append("payment.allowed_payee (skipped: no resolved payees)")
+            result.checked.append("mandate.payment.allowed_payees (skipped: no resolved payees)")
             return
         result.satisfied = False
-        result.violations.append("allowed_payee constraint present but no payees resolved")
+        result.violations.append("allowed_payees constraint present but no payees resolved")
         return
 
     found = any(_merchant_matches(m, payee) for m in allowed_merchants)
@@ -203,25 +203,22 @@ def _check_allowed_payee(c: AllowedPayeeConstraint, fulfillment: dict, result: C
 
 def _check_allowed_merchant(c: AllowedMerchantConstraint, fulfillment: dict, result: ConstraintCheckResult):
     """Check merchant is in the allowed merchant list."""
-    result.checked.append("mandate.checkout.allowed_merchant")
+    result.checked.append("mandate.checkout.allowed_merchants")
     merchant = fulfillment.get("merchant", {})
     if not isinstance(merchant, dict) or not merchant:
         result.satisfied = False
         result.violations.append("Missing or invalid merchant in fulfillment")
         return
 
-    if not isinstance(c.allowed_merchants, list):
+    if not isinstance(c.allowed, list):
         result.satisfied = False
         result.violations.append(
-            f"mandate.checkout.allowed_merchant 'allowed_merchants' must be a list, "
-            f"got {type(c.allowed_merchants).__name__}"
+            f"mandate.checkout.allowed_merchants 'allowed' must be a list, got {type(c.allowed).__name__}"
         )
         return
-    if not c.allowed_merchants:
+    if not c.allowed:
         result.satisfied = False
-        result.violations.append(
-            "mandate.checkout.allowed_merchant constraint missing required 'allowed_merchants' field"
-        )
+        result.violations.append("mandate.checkout.allowed_merchants constraint missing required 'allowed' field")
         return
 
     allowed_merchants = fulfillment.get("allowed_merchants", [])
@@ -229,19 +226,19 @@ def _check_allowed_merchant(c: AllowedMerchantConstraint, fulfillment: dict, res
         allowed_merchants = []
     if not allowed_merchants:
         # Support inline allowlists when constraints are not represented as SD refs.
-        constraint_merchants = c.allowed_merchants if isinstance(c.allowed_merchants, list) else []
+        constraint_merchants = c.allowed if isinstance(c.allowed, list) else []
         allowed_merchants = [
             m for m in constraint_merchants if isinstance(m, dict) and "..." not in m and (m.get("id") or m.get("name"))
         ]
     if not allowed_merchants:
         # Distinguish: all SD refs → skip; inline merchants that failed validation → fail
-        source = constraint_merchants if constraint_merchants else c.allowed_merchants
+        source = constraint_merchants if constraint_merchants else c.allowed
         all_sd_refs = all(isinstance(m, dict) and "..." in m for m in source)
         if all_sd_refs:
-            result.checked.append("mandate.checkout.allowed_merchant (skipped: no resolved merchants)")
+            result.checked.append("mandate.checkout.allowed_merchants (skipped: no resolved merchants)")
             return
         result.satisfied = False
-        result.violations.append("allowed_merchant constraint present but no merchants resolved")
+        result.violations.append("allowed_merchants constraint present but no merchants resolved")
         return
 
     found = any(_merchant_matches(m, merchant) for m in allowed_merchants)

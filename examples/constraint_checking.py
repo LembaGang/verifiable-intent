@@ -4,14 +4,14 @@ Demonstrates how the Network validates that an agent's fulfillment
 (Layer 3) satisfies the user's constraints (Layer 2).
 
 V2 constraint types (8 registered):
-  - payment.amount (min/max integer cents)
-  - payment.allowed_payee
-  - mandate.checkout.allowed_merchant
+  - mandate.payment.amount_range (min/max integer cents)
+  - mandate.payment.allowed_payees
+  - mandate.checkout.allowed_merchants
   - mandate.checkout.line_items
-  - payment.reference (conditional_transaction_id)
-  - payment.budget (cumulative spend cap)
-  - payment.recurrence (merchant-managed subscriptions)
-  - payment.agent_recurrence (agent-managed recurring purchases)
+  - mandate.payment.reference (conditional_transaction_id)
+  - mandate.payment.budget (cumulative spend cap)
+  - mandate.payment.recurrence (merchant-managed subscriptions)
+  - mandate.payment.agent_recurrence (agent-managed recurring purchases)
 
 Run: python examples/constraint_checking.py
 """
@@ -41,11 +41,11 @@ def main():
     banner("Constraint Checking — V2 Types")
 
     # ------------------------------------------------------------------
-    # 1. payment.amount — min/max integer cents
+    # 1. mandate.payment.amount_range — min/max integer cents
     # ------------------------------------------------------------------
-    step(1, "payment.amount — Per-transaction budget bounds (integer cents)")
+    step(1, "mandate.payment.amount_range — Per-transaction budget bounds (integer cents)")
 
-    constraints = [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}]
+    constraints = [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}]
 
     result_pass = check_constraints(
         constraints,
@@ -76,14 +76,14 @@ def main():
     assert not result_below_min.satisfied
 
     # ------------------------------------------------------------------
-    # 2. payment.allowed_payee
+    # 2. mandate.payment.allowed_payees
     # ------------------------------------------------------------------
-    step(2, "payment.allowed_payee — Allowed payees")
+    step(2, "mandate.payment.allowed_payees — Allowed payees")
 
     constraints = [
         {
-            "type": "payment.allowed_payee",
-            "allowed_payees": [
+            "type": "mandate.payment.allowed_payees",
+            "allowed": [
                 {"id": "merchant-uuid-1", "name": "Tennis Warehouse", "website": "https://tennis-warehouse.com"},
             ],
         }
@@ -114,19 +114,19 @@ def main():
     assert not result_wrong.satisfied
 
     # ------------------------------------------------------------------
-    # 3. mandate.checkout.allowed_merchant
+    # 3. mandate.checkout.allowed_merchants
     # ------------------------------------------------------------------
-    step(3, "mandate.checkout.allowed_merchant — Merchant allowlist")
+    step(3, "mandate.checkout.allowed_merchants — Merchant allowlist")
 
     constraints = [
         {
-            "type": "mandate.checkout.allowed_merchant",
-            "allowed_merchants": MERCHANTS,
+            "type": "mandate.checkout.allowed_merchantss",
+            "allowed": MERCHANTS,
         }
     ]
 
     result_ok = check_constraints(constraints, {})
-    _show_result("mandate.checkout.allowed_merchant (structural validation)", result_ok)
+    _show_result("mandate.checkout.allowed_merchants (structural validation)", result_ok)
 
     # ------------------------------------------------------------------
     # 4. mandate.checkout.line_items
@@ -144,13 +144,13 @@ def main():
     _show_result("mandate.checkout.line_items (structural validation)", result_ok)
 
     # ------------------------------------------------------------------
-    # 5. payment.reference — Cross-reference via checkout disclosure hash
+    # 5. mandate.payment.reference — Cross-reference via checkout disclosure hash
     # ------------------------------------------------------------------
-    step(5, "payment.reference — Cross-reference via conditional_transaction_id")
+    step(5, "mandate.payment.reference — Cross-reference via conditional_transaction_id")
 
-    constraints = [{"type": "payment.reference", "conditional_transaction_id": "abc123"}]
+    constraints = [{"type": "mandate.payment.reference", "conditional_transaction_id": "abc123"}]
     result_ok = check_constraints(constraints, {})
-    _show_result("payment.reference (binding checked via integrity layer)", result_ok)
+    _show_result("mandate.payment.reference (binding checked via integrity layer)", result_ok)
 
     # ------------------------------------------------------------------
     # Strictness modes
@@ -158,7 +158,7 @@ def main():
     step(6, "Strictness modes: PERMISSIVE vs STRICT")
 
     custom_constraints = [
-        {"type": "payment.amount", "currency": "USD", "min": 0, "max": 50000},
+        {"type": "mandate.payment.amount_range", "currency": "USD", "min": 0, "max": 50000},
         {"type": "urn:example:custom-loyalty-check", "loyaltyTier": "gold"},
     ]
     fulfillment = {"payment_amount": {"amount": 10000, "currency": "USD"}}
@@ -185,14 +185,14 @@ def main():
   +----------------------------------------------------------------+
   |  V2 registered constraint types (8):                           |
   |  -----------------------------------                           |
-  |  1. payment.amount               — Min/max cents              |
-  |  2. payment.allowed_payee        — Payee allowlist            |
-  |  3. mandate.checkout.allowed_merchant — Merchant list         |
+  |  1. mandate.payment.amount_range               — Min/max cents              |
+  |  2. mandate.payment.allowed_payees        — Payee allowlist            |
+  |  3. mandate.checkout.allowed_merchants — Merchant list         |
   |  4. mandate.checkout.line_items  — Product constraints        |
-  |  5. payment.reference            — Checkout cross-ref         |
-  |  6. payment.budget               — Cumulative spend cap       |
-  |  7. payment.recurrence           — Subscription setup         |
-  |  8. payment.agent_recurrence     — Agent recurring purchases  |
+  |  5. mandate.payment.reference            — Checkout cross-ref         |
+  |  6. mandate.payment.budget       — Cumulative spend cap       |
+  |  7. mandate.payment.recurrence   — Subscription setup         |
+  |  8. mandate.payment.agent_recurrence — Agent recurring purchases |
   |                                                                |
   |  Extensible: Unknown types handled per strictness mode        |
   |  PERMISSIVE: skip + log   STRICT: reject                      |

@@ -125,7 +125,7 @@ class TestAllowedPayeeEmptyMerchants:
     def test_allowed_payee_empty_merchants_fails(self):
         """Empty allowed_payees list → violation (not silent pass)."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": []}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": []}],
             {
                 "payee": {"id": "m1", "name": "Test Merchant", "website": "https://test.com"},
                 "allowed_merchants": [],
@@ -137,7 +137,7 @@ class TestAllowedPayeeEmptyMerchants:
     def test_allowed_payee_resolved_merchants_works(self):
         """Constraint with inline merchant + valid payee → satisfied."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "Test Merchant"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "Test Merchant"}]}],
             {
                 "payee": {"id": "m1", "name": "Test Merchant", "website": "https://test.com"},
                 "allowed_merchants": [
@@ -150,7 +150,7 @@ class TestAllowedPayeeEmptyMerchants:
     def test_allowed_payee_no_fulfillment_payee_fails(self):
         """Missing payee in fulfillment → violation."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "Shop"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "Shop"}]}],
             {"allowed_merchants": [{"id": "m1"}]},
         )
         assert not result.satisfied
@@ -161,7 +161,7 @@ class TestAllowedMerchantEmptyList:
     def test_allowed_merchant_empty_list_fails(self):
         """Empty allowed_merchants list → violation (not silent pass)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": []}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": []}],
             {
                 "merchant": {"id": "m1", "name": "Test Merchant", "website": "https://test.com"},
                 "allowed_merchants": [],

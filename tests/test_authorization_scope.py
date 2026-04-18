@@ -91,16 +91,16 @@ class TestMerchantConstraintSubset:
         # Only allow first merchant
         l2 = _build_l2_with_constraints(
             checkout_constraints=[
-                AllowedMerchantConstraint(allowed_merchants=[MERCHANTS[0]]),
+                AllowedMerchantConstraint(allowed=[MERCHANTS[0]]),
             ],
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
                 for c in delegate.get("constraints", []):
-                    if c.get("type") == "mandate.checkout.allowed_merchant":
-                        assert _count_sd_refs(c, "allowed_merchants") == 1, (
-                            f"Expected 1 merchant SD ref, got {_count_sd_refs(c, 'allowed_merchants')}"
+                    if c.get("type") == "mandate.checkout.allowed_merchants":
+                        assert _count_sd_refs(c, "allowed") == 1, (
+                            f"Expected 1 merchant SD ref, got {_count_sd_refs(c, 'allowed')}"
                         )
                         return
         pytest.fail("checkout mandate with allowed_merchant constraint not found")
@@ -109,15 +109,15 @@ class TestMerchantConstraintSubset:
         """Constraint with all merchants → L2 refs all merchants."""
         l2 = _build_l2_with_constraints(
             checkout_constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
             ],
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict) and delegate.get("vct") == "mandate.checkout.open":
                 for c in delegate.get("constraints", []):
-                    if c.get("type") == "mandate.checkout.allowed_merchant":
-                        assert _count_sd_refs(c, "allowed_merchants") == 2
+                    if c.get("type") == "mandate.checkout.allowed_merchants":
+                        assert _count_sd_refs(c, "allowed") == 2
                         return
         pytest.fail("checkout mandate with allowed_merchant constraint not found")
 
@@ -191,16 +191,16 @@ class TestPayeeConstraintSubset:
         """Payee constraint with 1 merchant → L2 only refs that 1."""
         l2 = _build_l2_with_constraints(
             payment_constraints=[
-                AllowedPayeeConstraint(allowed_payees=[MERCHANTS[0]]),
+                AllowedPayeeConstraint(allowed=[MERCHANTS[0]]),
             ],
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
                 for c in delegate.get("constraints", []):
-                    if c.get("type") == "payment.allowed_payee":
-                        assert _count_sd_refs(c, "allowed_payees") == 1, (
-                            f"Expected 1 payee SD ref, got {_count_sd_refs(c, 'allowed_payees')}"
+                    if c.get("type") == "mandate.payment.allowed_payees":
+                        assert _count_sd_refs(c, "allowed") == 1, (
+                            f"Expected 1 payee SD ref, got {_count_sd_refs(c, 'allowed')}"
                         )
                         return
         pytest.fail("payment mandate with allowed_payee constraint not found")
@@ -209,15 +209,15 @@ class TestPayeeConstraintSubset:
         """Payee constraint with all merchants → L2 refs all."""
         l2 = _build_l2_with_constraints(
             payment_constraints=[
-                AllowedPayeeConstraint(allowed_payees=MERCHANTS),
+                AllowedPayeeConstraint(allowed=MERCHANTS),
             ],
         )
         l2_claims = resolve_disclosures(l2)
         for delegate in l2_claims.get("delegate_payload", []):
             if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
                 for c in delegate.get("constraints", []):
-                    if c.get("type") == "payment.allowed_payee":
-                        assert _count_sd_refs(c, "allowed_payees") == 2
+                    if c.get("type") == "mandate.payment.allowed_payees":
+                        assert _count_sd_refs(c, "allowed") == 2
                         return
         pytest.fail("payment mandate with allowed_payee constraint not found")
 
@@ -229,7 +229,7 @@ class TestUnknownMerchantRejection:
         with pytest.raises(ValueError, match="unknown merchant"):
             _build_l2_with_constraints(
                 checkout_constraints=[
-                    AllowedMerchantConstraint(allowed_merchants=[unknown_merchant]),
+                    AllowedMerchantConstraint(allowed=[unknown_merchant]),
                 ],
             )
 
@@ -251,6 +251,6 @@ class TestUnknownMerchantRejection:
         with pytest.raises(ValueError, match="unknown merchant"):
             _build_l2_with_constraints(
                 payment_constraints=[
-                    AllowedPayeeConstraint(allowed_payees=[unknown_merchant]),
+                    AllowedPayeeConstraint(allowed=[unknown_merchant]),
                 ],
             )

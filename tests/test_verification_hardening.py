@@ -148,7 +148,7 @@ def _make_autonomous_chain(
         cnf_jwk=agent.public_jwk if include_checkout_cnf else None,
         cnf_kid="agent-key-1" if include_checkout_cnf else None,
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),

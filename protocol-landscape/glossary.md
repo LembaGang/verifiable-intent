@@ -86,15 +86,16 @@ conveyed by the L2 `typ` header.
 | VI Constraint Type | Purpose | UCP / AP2 Equivalent | ACP Equivalent | Notes |
 |--------------------|---------|----------------------|----------------|-------|
 | **`mandate.checkout.line_items`** | Restrict which products the agent may purchase (structured items with `id`, `acceptable_items` as SD refs, `quantity`) | `line_items[]` in checkout (UCP) / `IntentMandate.skus` (AP2) | `line_items[]` in checkout session | UCP models checkout contents as `line_items[]` within checkout sessions. AP2's `skus` field is a flat list of allowed SKUs (or null). ACP's `line_items[]` describes what was purchased, not what may be purchased — a post-hoc record rather than a pre-authorization constraint. VI `mandate.checkout.line_items` adds structured item references with selective disclosure |
-| **`mandate.checkout.allowed_merchant`** | Restrict which merchants the agent may transact with (selectively disclosable merchant list in checkout mandate) | Business URL (UCP) / `IntentMandate.merchants` (AP2) | Seller URL / SPT `allowance.merchant_id` | Merchant allowlist in the checkout mandate with individually disclosable merchant entries. UCP identifies the Business by URL. ACP scopes SPT to a specific merchant via `allowance.merchant_id`, but the constraint is set by the agent, not the buyer |
-| **`payment.allowed_payee`** | Restrict which payees the agent may transact with (in payment mandate) | Business URL (UCP) / `IntentMandate.merchants` (AP2) | Seller URL / SPT `allowance.merchant_id` | Renamed from `payment.payee`. Payee allowlist in the payment mandate, complementing `mandate.checkout.allowed_merchant` in the checkout mandate. VI adds selective disclosure so individual payee identities can be hidden |
-| **`payment.amount`** | Constrain the transaction amount to a min/max range (`currency` + integer minor units) | --- | SPT `allowance.max_amount` | Renamed from `payment.budget`. Neither UCP nor AP2 defines an explicit amount constraint. ACP's SPT `allowance.max_amount` caps charge amount but is set by the agent, not the buyer. VI uses integer minor units and supports min/max range. Cryptographically enforceable and user-set |
-| **`payment.reference`** | Cryptographically bind payment mandate to checkout mandate via `conditional_transaction_id` | --- | --- | Defined by VI. No equivalent in any protocol. Appears only in Autonomous L2 payment mandates. Simplified from dual-hash to single `conditional_transaction_id`. Deferred binding because the checkout doesn't exist yet when L2 is created |
+| **`mandate.checkout.allowed_merchants`** | Restrict which merchants the agent may transact with (selectively disclosable merchant list in checkout mandate) | Business URL (UCP) / `IntentMandate.merchants` (AP2) | Seller URL / SPT `allowance.merchant_id` | Merchant allowlist in the checkout mandate with individually disclosable merchant entries. UCP identifies the Business by URL. ACP scopes SPT to a specific merchant via `allowance.merchant_id`, but the constraint is set by the agent, not the buyer |
+| **`mandate.payment.allowed_payees`** | Restrict which payees the agent may transact with (in payment mandate) | Business URL (UCP) / `IntentMandate.merchants` (AP2) | Seller URL / SPT `allowance.merchant_id` | Renamed from `payment.payee`. Payee allowlist in the payment mandate, complementing `mandate.checkout.allowed_merchants` in the checkout mandate. VI adds selective disclosure so individual payee identities can be hidden |
+| **`mandate.payment.amount_range`** | Constrain the transaction amount to a min/max range (`currency` + integer minor units) | --- | SPT `allowance.max_amount` | Renamed from `mandate.payment.budget`. Neither UCP nor AP2 defines an explicit amount constraint. ACP's SPT `allowance.max_amount` caps charge amount but is set by the agent, not the buyer. VI uses integer minor units and supports min/max range. Cryptographically enforceable and user-set |
+| **`mandate.payment.reference`** | Cryptographically bind payment mandate to checkout mandate via `conditional_transaction_id` | --- | --- | Defined by VI. No equivalent in any protocol. Appears only in Autonomous L2 payment mandates. Simplified from dual-hash to single `conditional_transaction_id`. Deferred binding because the checkout doesn't exist yet when L2 is created |
 
-Recurrence mapping note: `recurrence` is a top-level payment mandate field in VI
-(not a constraint type). VI uses human-readable frequency names (for example,
-`MONTHLY`) and integer `number`; AP2 uses frequency codes (for example, `MNTH`)
-with schema-level recurrence typing.
+Recurrence mapping note: recurrence is expressed in VI via the
+`mandate.payment.recurrence` and `mandate.payment.agent_recurrence` constraint
+types (not a top-level mandate field). VI uses ISO 20022 frequency codes
+(e.g. `MNTH`, `WEEK`, `YEAR`), aligning with AP2's schema-level recurrence
+typing.
 
 ---
 

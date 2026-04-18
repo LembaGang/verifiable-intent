@@ -77,7 +77,7 @@ def _build_full_chain():
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),
@@ -322,6 +322,6 @@ class TestAutonomousModelConstruction:
     def test_payment_mandate_rejects_removed_fields(self):
         """PaymentMandate no longer accepts recurrence or execution_date (issue #8)."""
         with pytest.raises(TypeError):
-            PaymentMandate(vct="mandate.payment.open", cnf_jwk={"x": "a"}, recurrence="MONTHLY")
+            PaymentMandate(vct="mandate.payment.open", cnf_jwk={"x": "a"}, recurrence="MNTH")
         with pytest.raises(TypeError):
             PaymentMandate(vct="mandate.payment.open", cnf_jwk={"x": "a"}, execution_date="2026-03-01")

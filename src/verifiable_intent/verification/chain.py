@@ -619,7 +619,7 @@ def verify_chain(
                     return result
                 if agent_kid is not None and l3_header_kid != agent_kid:
                     result.errors.append(
-                        f"{l3_label} header kid '{l3_header_kid}' does not match L2 cnf.kid '{agent_kid}'"
+                        f"{l3_label} header kid '{l3_header_kid}' does not match L2 cnf.jwk.kid '{agent_kid}'"
                     )
                     return result
 
@@ -894,15 +894,15 @@ def _pair_autonomous(
     for p in payments:
         ref_constraint = None
         for c in p.resolved.get("constraints") or []:
-            if isinstance(c, dict) and c.get("type") == "payment.reference":
+            if isinstance(c, dict) and c.get("type") == "mandate.payment.reference":
                 ref_constraint = c
                 break
         if ref_constraint is None:
-            return [], ["Open payment mandate missing payment.reference constraint for pairing"]
+            return [], ["Open payment mandate missing mandate.payment.reference constraint for pairing"]
 
         cond_tid = ref_constraint.get("conditional_transaction_id", "")
         if not cond_tid:
-            return [], ["payment.reference constraint missing conditional_transaction_id for pairing"]
+            return [], ["mandate.payment.reference constraint missing conditional_transaction_id for pairing"]
 
         if cond_tid in matched_checkouts:
             return [], ["L2 contains duplicate payment mandates referencing same checkout (pairing key collision)"]
@@ -946,9 +946,9 @@ def _verify_mandate_pair(
 
     if payment_mandate and payment_mandate.get("vct") == _L2_PAYMENT_VCT_OPEN:
         constraints = payment_mandate.get("constraints") or []
-        has_reference = any(isinstance(c, dict) and c.get("type") == "payment.reference" for c in constraints)
+        has_reference = any(isinstance(c, dict) and c.get("type") == "mandate.payment.reference" for c in constraints)
         if not has_reference:
-            return ["Open payment mandate must contain a payment.reference constraint"], [], []
+            return ["Open payment mandate must contain a mandate.payment.reference constraint"], [], []
         pi = payment_mandate.get("payment_instrument")
         if not isinstance(pi, dict) or not pi.get("id") or not pi.get("type"):
             return (
@@ -1024,7 +1024,7 @@ def _extract_agent_key_from_all_pairs(
     """Extract the delegated agent key and kid from all L2 open mandates across pairs.
 
     Returns (jwk, kid, error). kid may be None for backward compatibility
-    with L2 mandates that don't include cnf.kid.
+    with L2 mandates that don't include cnf.jwk.kid.
     """
     agent_keys: list[dict] = []
     agent_kids: list[str | None] = []
@@ -1042,8 +1042,8 @@ def _extract_agent_key_from_all_pairs(
             jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
             if not isinstance(jwk, dict) or not jwk:
                 return None, None, f"L2 {label} open mandate missing cnf.jwk for agent delegation"
+            kid = jwk.get("kid") if isinstance(jwk, dict) else None
             agent_keys.append(jwk)
-            kid = cnf.get("kid") if isinstance(cnf, dict) else None
             agent_kids.append(kid)
 
     if not agent_keys:
@@ -1055,13 +1055,13 @@ def _extract_agent_key_from_all_pairs(
         if other.get("x") != first.get("x") or other.get("y") != first.get("y"):
             return None, None, "L2 mandate cnf.jwk values must be identical across all pairs but differ"
 
-    # Verify all cnf.kid values are identical (where present)
+    # Verify all cnf.jwk.kid values are identical (where present)
     non_none_kids = [k for k in agent_kids if k is not None]
     if non_none_kids:
         first_kid = non_none_kids[0]
         for other_kid in non_none_kids[1:]:
             if other_kid != first_kid:
-                return None, None, "L2 mandate cnf.kid values must be identical across all pairs but differ"
+                return None, None, "L2 mandate cnf.jwk.kid values must be identical across all pairs but differ"
         return first, first_kid, None
 
     return first, None, None

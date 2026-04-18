@@ -71,7 +71,7 @@ def _make_full_chain():
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
         ],
     )
     payment_mandate = PaymentMandate(

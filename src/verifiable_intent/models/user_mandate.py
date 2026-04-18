@@ -38,10 +38,10 @@ class CheckoutMandate:
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"vct": self.vct}
         if self.cnf_jwk:
-            cnf: dict = {"jwk": self.cnf_jwk}
+            jwk = dict(self.cnf_jwk)
             if self.cnf_kid:
-                cnf["kid"] = self.cnf_kid
-            d["cnf"] = cnf
+                jwk["kid"] = self.cnf_kid
+            d["cnf"] = {"jwk": jwk}
         if self.constraints:
             d["constraints"] = [c.to_dict() for c in self.constraints]
         if self.checkout_jwt is not None:
@@ -83,10 +83,10 @@ class PaymentMandate:
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"vct": self.vct}
         if self.cnf_jwk:
-            cnf: dict = {"jwk": self.cnf_jwk}
+            jwk = dict(self.cnf_jwk)
             if self.cnf_kid:
-                cnf["kid"] = self.cnf_kid
-            d["cnf"] = cnf
+                jwk["kid"] = self.cnf_kid
+            d["cnf"] = {"jwk": jwk}
         if self.constraints:
             d["constraints"] = [c.to_dict() for c in self.constraints]
         if self.payment_instrument is not None:

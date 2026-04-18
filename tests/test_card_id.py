@@ -100,7 +100,7 @@ def _build_chain(card_id=None, payment_instrument=None):
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
                 ),
@@ -113,7 +113,7 @@ def _build_chain(card_id=None, payment_instrument=None):
             payment_instrument=pi,
             constraints=[
                 PaymentAmountConstraint(currency="USD", min=10000, max=40000),
-                AllowedPayeeConstraint(allowed_payees=MERCHANTS),
+                AllowedPayeeConstraint(allowed=MERCHANTS),
             ],
         ),
         merchants=MERCHANTS,

@@ -110,7 +110,7 @@ def _make_single_pair_l2(now, l1_ser, checkout_items, merchants, acceptable_item
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=merchants),
+            AllowedMerchantConstraint(allowed=merchants),
             CheckoutLineItemsConstraint(
                 items=[{"id": "li-1", "acceptable_items": acceptable_items[:1], "quantity": 1}]
             ),

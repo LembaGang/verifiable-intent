@@ -114,10 +114,10 @@ payments include authentication elements linked to a specific amount and payee
 (dynamic linking). VI's constraint model provides a cryptographic
 implementation of dynamic linking:
 
-- **Amount binding:** The `payment.amount` constraint cryptographically limits
+- **Amount binding:** The `mandate.payment.amount_range` constraint cryptographically limits
   the transaction amount to a min/max range. The L3a `amount` must satisfy this
   constraint for verification to succeed.
-- **Payee binding:** The `payment.allowed_payee` constraint specifies allowed merchants.
+- **Payee binding:** The `mandate.payment.allowed_payees` constraint specifies allowed merchants.
   Only transactions to listed payees pass verification.
 - **Checkout-payment binding:** The `checkout_hash` and `conditional_transaction_id` mechanisms
   bind the payment authorization to a specific set of goods, going beyond
@@ -168,7 +168,7 @@ contribution.
 - **Layer 1** (Issuer SD-JWT): `cnf.jwk` binds the user's public key.
   The issuer asserts "this key belongs to this user."
 - **Layer 2** (User KB-SD-JWT): In Autonomous mode, each mandate includes
-  `cnf.kid` and `cnf.jwk` binding the agent's public key. The user asserts
+  `cnf.jwk` (with an embedded `kid`) binding the agent's public key. The user asserts
   "this agent key may act within these constraints."
 - **Layer 3** (Agent KB-SD-JWT): The `kid` in the header identifies the
   delegated agent key, which verifiers resolve from L2 `cnf.jwk`. The agent
@@ -224,8 +224,8 @@ agent actions).
 
 Earlier VI drafts included `recurrence` as a top-level field on payment
 mandates, treating subscription setup as distinct from constraint-based
-delegation. V0.1 replaces this with two constraint types: `payment.recurrence`
-(merchant-managed subscriptions) and `payment.agent_recurrence` (agent-managed
+delegation. V0.1 replaces this with two constraint types: `mandate.payment.recurrence`
+(merchant-managed subscriptions) and `mandate.payment.agent_recurrence` (agent-managed
 recurring purchases).
 
 **Rationale:**
@@ -240,13 +240,13 @@ recurring purchases).
    mandate with only `recurrence` but no other constraints looked like
    Immediate mode data, not a delegated authority grant.
 
-3. **Multi-transaction support.** `payment.agent_recurrence` explicitly
+3. **Multi-transaction support.** `mandate.payment.agent_recurrence` explicitly
    authorizes the agent to create multiple L3 pairs over time (the
-   multi-transaction mandate pair model), paired with `payment.budget` to cap
+   multi-transaction mandate pair model), paired with `mandate.payment.budget` to cap
    cumulative spend. This is a natural extension of the constraint model;
    top-level fields provided no clear path for this.
 
-4. **Subscription setup clarity.** `payment.recurrence` makes it explicit that
+4. **Subscription setup clarity.** `mandate.payment.recurrence` makes it explicit that
    the transaction is a subscription setup (one L3, merchant charges
    thereafter). The constraint validates setup parameters against user intent.
 
@@ -255,7 +255,7 @@ recurring purchases).
 ## 9. Why One-L3-Per-Pair in v0.1 Base Model?
 
 V0.1 defines one-L3-per-mandate-pair as the base transaction model, with
-`payment.agent_recurrence` as an explicit extension that authorizes multiple L3
+`mandate.payment.agent_recurrence` as an explicit extension that authorizes multiple L3
 fulfillments.
 
 **Rationale:**
@@ -273,24 +273,24 @@ fulfillments.
    invariant lets implementations validate their tracking before adding
    bounded multiplicity.
 
-3. **Subscription setup covers immediate need.** The `payment.recurrence`
+3. **Subscription setup covers immediate need.** The `mandate.payment.recurrence`
    constraint lets an agent establish a subscription with a single L3 pair.
    Subsequent recurring charges are merchant-initiated on normal payment rails
    (card-on-file, network tokens). This covers the most common recurring
    payment pattern.
 
-4. **Explicit multi-transaction opt-in.** The `payment.agent_recurrence`
+4. **Explicit multi-transaction opt-in.** The `mandate.payment.agent_recurrence`
    constraint explicitly signals "this mandate pair authorizes multiple L3
-   fulfillments" with clear bounds (`max_occurrences`, `payment.budget`
+   fulfillments" with clear bounds (`max_occurrences`, `mandate.payment.budget`
    cumulative cap, date range). This makes the multi-transaction authorization
    an intentional, verifiable choice rather than an implicit behavior.
 
 **Transaction scope models in v0.1:**
 
 - **Single-transaction** (base): One L3 pair per mandate pair
-- **Subscription setup**: `payment.recurrence` constraint; one L3 pair starts
+- **Subscription setup**: `mandate.payment.recurrence` constraint; one L3 pair starts
   merchant-managed recurring charges
-- **Multi-transaction**: `payment.agent_recurrence` constraint; multiple L3
+- **Multi-transaction**: `mandate.payment.agent_recurrence` constraint; multiple L3
   pairs within bounds (occurrence cap, budget cap, date range)
 
 ---

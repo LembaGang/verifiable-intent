@@ -24,8 +24,8 @@ _No unreleased changes._
 - Multi-mandate-pair L2 support with mode-specific pairing and orphan/duplicate
   detection
 - Five constraint types: mandate.checkout.line_items,
-  mandate.checkout.allowed_merchant, payment.allowed_payee, payment.amount,
-  payment.reference
+  mandate.checkout.allowed_merchants, mandate.payment.allowed_payees,
+  mandate.payment.amount_range, mandate.payment.reference
 - Checkout-payment hash binding via checkout_hash (SHA-256 of checkout_jwt)
 - Selective disclosure with role-specific presentation routing
 - Strictness modes for constraint validation (PERMISSIVE / STRICT)

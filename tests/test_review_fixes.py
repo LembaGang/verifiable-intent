@@ -131,7 +131,7 @@ class TestNonObjectPayloads:
 
 
 class TestL3HeaderKidBinding:
-    """L3 header kid must be a string matching L2 cnf.kid."""
+    """L3 header kid must be a string matching L2 cnf.jwk.kid."""
 
     def test_l3_header_kid_non_string_rejected(self):
         """Non-string kid in L3 header should fail with error, not crash.
@@ -152,7 +152,7 @@ class TestL3HeaderKidBinding:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -236,7 +236,7 @@ class TestNonDictConstraintEntries:
 
     def test_mixed_valid_and_invalid_entries(self):
         result = check_constraints(
-            [42, {"type": "payment.amount", "currency": "USD", "min": 100, "max": 500}],
+            [42, {"type": "mandate.payment.amount_range", "currency": "USD", "min": 100, "max": 500}],
             {"payment_amount": {"amount": 200, "currency": "USD"}},
         )
         assert not result.satisfied  # The int entry causes failure
@@ -339,7 +339,7 @@ class TestImmediateRejectsOpenMandates:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -411,7 +411,7 @@ class TestMalformedFulfillmentShapes:
 
     def test_string_payee(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": "invalid-string", "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -419,7 +419,7 @@ class TestMalformedFulfillmentShapes:
 
     def test_int_payee(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": 123, "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -427,7 +427,7 @@ class TestMalformedFulfillmentShapes:
     def test_list_merchant(self):
         """List merchant fails closed (not a valid dict)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": [{"id": "m1"}], "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -436,7 +436,7 @@ class TestMalformedFulfillmentShapes:
     def test_int_merchant(self):
         """Integer merchant fails closed (not a valid dict)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": 123, "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -529,7 +529,7 @@ class TestL3PaymentInstrumentSubstitution:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -610,7 +610,7 @@ class TestL3PaymentInstrumentSubstitution:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -713,7 +713,7 @@ class TestAutonomousInstrumentMismatch:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -796,7 +796,7 @@ class TestDuplicateMandateSmuggling:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -862,7 +862,7 @@ class TestDuplicateMandateSmuggling:
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
@@ -975,7 +975,7 @@ class TestNonListAllowedMerchants:
 
     def test_allowed_payee_nonlist_allowed_merchants(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": {"id": "m1", "name": "M"}, "allowed_merchants": "not-a-list"},
         )
         # Should not crash — falls through to inline constraint check
@@ -983,7 +983,7 @@ class TestNonListAllowedMerchants:
 
     def test_allowed_merchant_nonlist_allowed_merchants(self):
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": {"id": "m1", "name": "M"}, "allowed_merchants": 42},
         )
         # Should not crash — falls through to inline constraint check

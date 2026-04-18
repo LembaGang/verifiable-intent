@@ -79,7 +79,7 @@ def test_validate_intent_requires_l3_for_autonomous():
                 vct="mandate.checkout.open",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
-                constraints=[AllowedMerchantConstraint(allowed_merchants=MERCHANTS)],
+                constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
                 vct="mandate.payment.open",
@@ -141,7 +141,7 @@ def test_validate_intent_requires_disclosed_l3_payment_mandate():
                 vct="mandate.checkout.open",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
-                constraints=[AllowedMerchantConstraint(allowed_merchants=MERCHANTS)],
+                constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
                 vct="mandate.payment.open",
@@ -236,7 +236,7 @@ def test_validate_intent_rejects_missing_payment_disclosure():
                 vct="mandate.checkout.open",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
-                constraints=[AllowedMerchantConstraint(allowed_merchants=MERCHANTS)],
+                constraints=[AllowedMerchantConstraint(allowed=MERCHANTS)],
             ),
             payment_mandate=PaymentMandate(
                 vct="mandate.payment.open",

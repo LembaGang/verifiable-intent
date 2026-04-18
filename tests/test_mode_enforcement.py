@@ -63,7 +63,7 @@ def _make_autonomous_mandate(now: int, user_keys, agent_keys) -> UserMandate:
         cnf_jwk=agent_keys.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[
                     {

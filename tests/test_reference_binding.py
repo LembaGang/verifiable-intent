@@ -77,7 +77,7 @@ def _build_l1_l2():
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),
@@ -123,7 +123,7 @@ class TestReferenceConstraintIssuance:
 
         assert payment_mandate is not None, "No payment mandate in L2"
         constraints = payment_mandate.get("constraints", [])
-        ref_constraints = [c for c in constraints if c.get("type") == "payment.reference"]
+        ref_constraints = [c for c in constraints if c.get("type") == "mandate.payment.reference"]
         assert len(ref_constraints) == 1, f"Expected 1 payment.reference, got {len(ref_constraints)}"
         ref = ref_constraints[0]
         assert "conditional_transaction_id" in ref
@@ -147,7 +147,7 @@ class TestReferenceConstraintIssuance:
             if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
                 constraints = delegate.get("constraints", [])
                 for c in constraints:
-                    if c.get("type") == "payment.reference":
+                    if c.get("type") == "mandate.payment.reference":
                         expected = hash_disclosure(checkout_disc_b64)
                         assert c["conditional_transaction_id"] == expected
                         return
@@ -224,7 +224,7 @@ class TestReferenceBindingVerification:
         stripped_payment = dict(payment_mandate)
         stripped_payment["constraints"] = []
         for c in payment_mandate["constraints"]:
-            if c.get("type") == "payment.reference":
+            if c.get("type") == "mandate.payment.reference":
                 stripped_c = dict(c)
                 stripped_c["conditional_transaction_id"] = ""
                 stripped_payment["constraints"].append(stripped_c)

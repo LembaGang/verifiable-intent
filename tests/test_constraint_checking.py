@@ -8,7 +8,7 @@ from verifiable_intent.verification.constraint_checker import StrictnessMode, ch
 def test_constraint_checker_payment_amount_pass():
     """Amount within min/max range passes."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
         {"payment_amount": {"amount": 27999, "currency": "USD"}},
     )
     assert result.satisfied
@@ -18,7 +18,7 @@ def test_constraint_checker_payment_amount_pass():
 def test_constraint_checker_payment_amount_fail_over():
     """Amount exceeding max fails."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 20000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 20000}],
         {"payment_amount": {"amount": 27999, "currency": "USD"}},
     )
     assert not result.satisfied
@@ -28,7 +28,7 @@ def test_constraint_checker_payment_amount_fail_over():
 def test_constraint_checker_payment_amount_fail_under():
     """Amount below min fails."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 30000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 30000, "max": 40000}],
         {"payment_amount": {"amount": 27999, "currency": "USD"}},
     )
     assert not result.satisfied
@@ -97,7 +97,7 @@ def test_unknown_constraint_skipped_for_closed_mandate_permissive():
 def test_constraint_checker_payment_amount_missing_fulfillment():
     """Payment amount constraint fails when fulfillment omits amount."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
         {},
     )
     assert not result.satisfied
@@ -107,7 +107,7 @@ def test_constraint_checker_payment_amount_missing_fulfillment():
 def test_constraint_checker_currency_mismatch():
     """Payment amount constraint fails when currency doesn't match."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
         {"payment_amount": {"amount": 27999, "currency": "EUR"}},
     )
     assert not result.satisfied
@@ -117,7 +117,7 @@ def test_constraint_checker_currency_mismatch():
 def test_constraint_checker_payment_amount_invalid_format():
     """Malformed amount value should produce violation, not exception."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
         {"payment_amount": {"amount": "not-a-number", "currency": "USD"}},
     )
     assert not result.satisfied
@@ -283,7 +283,7 @@ def test_line_items_invalid_quantity_type():
 def test_payment_amount_float_rejected():
     """Float amount must be rejected, not silently truncated (P1-C7)."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
         {"payment_amount": {"amount": 10000.9, "currency": "USD"}},
     )
     assert not result.satisfied
@@ -293,7 +293,7 @@ def test_payment_amount_float_rejected():
 def test_payment_amount_bool_rejected():
     """Boolean amount must be rejected (P1-C7)."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 0, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 0, "max": 40000}],
         {"payment_amount": {"amount": True, "currency": "USD"}},
     )
     assert not result.satisfied
@@ -303,7 +303,7 @@ def test_payment_amount_bool_rejected():
 def test_payment_amount_zero_valid():
     """Amount=0 must pass required-field presence/type checks (regression)."""
     result = check_constraints(
-        [{"type": "payment.amount", "currency": "USD", "min": 0, "max": 40000}],
+        [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 0, "max": 40000}],
         {"payment_amount": {"amount": 0, "currency": "USD"}},
     )
     assert result.satisfied, f"amount=0 should be valid: {result.violations}"
@@ -333,7 +333,7 @@ def test_allowed_payee_none_allowed_fails_closed():
     """AllowedPayeeConstraint with allowed_payees=None fails cleanly (P1-C6)."""
     # Pass dict without allowed_payees key to simulate malformed constraint
     result = check_constraints(
-        [{"type": "payment.allowed_payee"}],
+        [{"type": "mandate.payment.allowed_payees"}],
         {"payee": {"id": "merchant-1", "name": "Test"}},
     )
     assert not result.satisfied
@@ -343,7 +343,7 @@ def test_allowed_payee_none_allowed_fails_closed():
 def test_allowed_merchant_none_merchants_fails_closed():
     """AllowedMerchantConstraint with allowed_merchants=None fails cleanly (P1-C6)."""
     result = check_constraints(
-        [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": []}],
+        [{"type": "mandate.checkout.allowed_merchants", "allowed": []}],
         {"merchant": {"id": "merchant-1", "name": "Test"}},
     )
     # With empty allowed_merchants list, should fail with missing 'allowed_merchants' field error

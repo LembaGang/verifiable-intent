@@ -125,7 +125,7 @@ def main():
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS, "quantity": 1}],
                 ),
@@ -139,10 +139,8 @@ def main():
             risk_data={"device_id": "android1234", "ip_address": "192.168.1.100"},
             constraints=[
                 PaymentAmountConstraint(currency="USD", min=10000, max=40000),
-                AllowedPayeeConstraint(allowed_payees=MERCHANTS),
-                PaymentRecurrenceConstraint(
-                    frequency="ANNUALLY", start_date="2026-01-01", end_date="2028-01-01", number=3
-                ),
+                AllowedPayeeConstraint(allowed=MERCHANTS),
+                PaymentRecurrenceConstraint(frequency="YEAR", start_date="2026-01-01", end_date="2028-01-01", number=3),
             ],
         ),
         merchants=MERCHANTS,
@@ -367,9 +365,9 @@ def main():
             disc_by_hash[hash_disclosure(disc_str)] = disc_val
 
         for c in payment_constraints:
-            if c.get("type") == "payment.allowed_payee":
+            if c.get("type") == "mandate.payment.allowed_payees":
                 resolved_merchants = []
-                for ref in c.get("allowed_payees", []):
+                for ref in c.get("allowed", []):
                     ref_hash = ref.get("...", "") if isinstance(ref, dict) else ""
                     if ref_hash and ref_hash in disc_by_hash:
                         resolved_merchants.append(disc_by_hash[ref_hash][-1])

@@ -84,7 +84,7 @@ def _build_autonomous_chain():
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),

@@ -227,13 +227,13 @@ is permitted to purchase, and binds the agent's key for L3 delegation.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `vct` | string | REQUIRED | MUST be `"mandate.checkout.open"`. |
-| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. Structure identical to L1 `cnf` (see §3.3) plus `kid`. MUST match the `cnf` in the payment mandate of the same mandate pair. |
+| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.jwk.kid` with a key identifier. Structure identical to L1 `cnf` (see §3.3) plus `kid`. MUST match the `cnf` in the payment mandate of the same mandate pair. |
 | `constraints` | array | REQUIRED | Array of constraint objects bounding the agent's purchasing authority. MUST contain at least one constraint. See [constraints.md](constraints.md) for registered types. |
 | `prompt_summary` | string | OPTIONAL | Human-readable description of the user's delegated intent. |
 
 **Nested selective disclosures (Autonomous mode):**
 
-Individual entries within `allowed_merchants` and `line_items` constraints are
+Individual entries within `allowed` and `line_items` constraints are
 themselves selectively disclosable. Each entry is a separate SD-JWT disclosure,
 referenced by hash from the constraint object. This allows the agent to disclose
 only the selected merchant or items to the verifier.
@@ -246,23 +246,23 @@ and binds the agent's key for L3 delegation.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `vct` | string | REQUIRED | MUST be `"mandate.payment.open"`. |
-| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. MUST match the `cnf` in the checkout mandate of the same mandate pair. |
+| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.jwk.kid` with a key identifier. MUST match the `cnf` in the checkout mandate of the same mandate pair. |
 | `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure. |
 | `constraints` | array | REQUIRED | Array of constraint objects bounding the agent's payment authority. MUST contain at least one constraint. |
 
 > **Note**: Recurrence terms (subscription setup, agent-managed recurring purchases) are
-> expressed as constraint types (`payment.recurrence`, `payment.agent_recurrence`) within
+> expressed as constraint types (`mandate.payment.recurrence`, `mandate.payment.agent_recurrence`) within
 > the `constraints` array. See [constraints.md](constraints.md) §4.6 and §4.7 for schemas.
 
-#### 4.5.3 Payment Reference Constraint (`payment.reference`)
+#### 4.5.3 Payment Reference Constraint (`mandate.payment.reference`)
 
-The Autonomous payment mandate MUST include a `payment.reference` constraint
+The Autonomous payment mandate MUST include a `mandate.payment.reference` constraint
 with a `conditional_transaction_id` that binds the payment mandate to its
 corresponding checkout mandate at the L2 disclosure level:
 
 ```json
 {
-  "type": "payment.reference",
+  "type": "mandate.payment.reference",
   "conditional_transaction_id": "<hash-of-checkout-mandate-disclosure>"
 }
 ```
@@ -280,7 +280,7 @@ See [constraints.md §4.8](constraints.md#48-paymentreference--checkout-payment-
 > values serving different binding purposes.
 
 > **Note**: Constraint type definitions, value schemas, and machine-enforceability
-> designations for all registered `mandate.checkout.*` and `payment.*` types are
+> designations for all registered `mandate.checkout.*` and `mandate.payment.*` types are
 > specified in [constraints.md](constraints.md). Machine-enforceable constraints
 > (amount range, allowed payee, merchant, line items) MUST be verified by verifiers;
 > descriptive fields (product description, brand, color, size) are informational
@@ -293,8 +293,8 @@ Mode is inferred from VCT values in L2 mandates: open VCTs (`mandate.checkout.op
 | Layer / Mode | `cnf` Claim | Requirement |
 |-------------|------------|-------------|
 | L2 Immediate mandates | Absent | MUST NOT contain `cnf`. No delegation occurs; the user directly confirms final values. |
-| L2 Autonomous mandates | Present | MUST contain `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. Both checkout and payment mandates in a pair MUST contain identical `cnf` values (`jwk` and `kid`). |
-| L3 payloads (all) | Absent | MUST NOT contain `cnf`. Terminal delegation — no further key binding is permitted. The agent proves key possession via the `kid` header parameter, which verifiers resolve against L2 `cnf.kid` and `cnf.jwk`. |
+| L2 Autonomous mandates | Present | MUST contain `cnf.jwk` with the agent's public key, and `cnf.jwk` MUST include a `kid` member as its key identifier. Both checkout and payment mandates in a pair MUST contain identical `cnf.jwk` values (including the embedded `kid`). |
+| L3 payloads (all) | Absent | MUST NOT contain `cnf`. Terminal delegation — no further key binding is permitted. The agent proves key possession via the `kid` header parameter, which verifiers resolve against L2 `cnf.jwk.kid` and `cnf.jwk`. |
 
 ### 4.7 Processing Rules — L2 Verification
 
@@ -332,7 +332,7 @@ claim (terminal delegation — no further key binding is permitted).
 |-----------|------|----------|-------------|
 | `alg` | string | REQUIRED | MUST be `"ES256"`. |
 | `typ` | string | REQUIRED | MUST be `"kb-sd-jwt"`. |
-| `kid` | string | REQUIRED | Key identifier. MUST match `cnf.kid` in the Layer 2 mandates. Verifiers resolve the agent's public key from L2 `cnf.jwk` by matching this `kid` value, rather than trusting a self-asserted key in the L3 header. |
+| `kid` | string | REQUIRED | Key identifier. MUST match `cnf.jwk.kid` in the Layer 2 mandates. Verifiers resolve the agent's public key from L2 `cnf.jwk` by matching this `kid` value, rather than trusting a self-asserted key in the L3 header. |
 
 ### 5.3 JWT Payload — Always-Visible Claims (L3a and L3b)
 
@@ -380,10 +380,10 @@ recompute `sd_hash` using the same selective approach per L3 type.
 |-------|------|----------|-------------|
 | `vct` | string | REQUIRED | MUST be `"mandate.payment"`. |
 | `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure. |
-| `payment_amount` | object | REQUIRED | Transaction amount object containing `currency` (ISO 4217 code, e.g., `"USD"`) and `amount` (integer minor units per ISO 4217, e.g., `27999` = $279.99). MUST satisfy the `payment.amount` constraint range from L2. |
+| `payment_amount` | object | REQUIRED | Transaction amount object containing `currency` (ISO 4217 code, e.g., `"USD"`) and `amount` (integer minor units per ISO 4217, e.g., `27999` = $279.99). MUST satisfy the `mandate.payment.amount_range` constraint range from L2. |
 | `payee` | object | REQUIRED | Merchant/payee descriptor. See §4.4.2 for `payee` object structure. |
 | `transaction_id` | string | REQUIRED | MUST equal `checkout_hash` in L3b: `B64U(SHA-256(ASCII(checkout_jwt)))`. |
-| `selected_merchant` | object | OPTIONAL | Selectively disclosable. The selected merchant, disclosed from the L2 `allowed_merchant` constraint. |
+| `selected_merchant` | object | OPTIONAL | Selectively disclosable. The selected merchant, disclosed from the L2 `mandate.checkout.allowed_merchants` constraint. |
 
 **MUST NOT contain:**
 - `cnf` claim (no further delegation from the agent — terminal delegation)
@@ -395,7 +395,7 @@ recompute `sd_hash` using the same selective approach per L3 type.
 
 ### 5.7 Processing Rules — L3 Verification
 
-1. Verifiers MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching the L3 header `kid` against L2 `cnf.kid`.
+1. Verifiers MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching the L3 header `kid` against L2 `cnf.jwk.kid`.
 2. Verifiers MUST verify the ES256 signature on L3 against the resolved key from L2 `cnf.jwk`.
 3. Verifiers MUST verify L3 `typ` header is `"kb-sd-jwt"`.
 4. Verifiers MUST verify L3 `sd_hash` against the selective L2 presentation (see §5.4).
@@ -451,7 +451,7 @@ hash = B64U(SHA-256(ASCII(checkout_jwt)))
 
 In Autonomous mode:
 - L3b `checkout_hash` and L3a `transaction_id` MUST be equal.
-- The L2 payment mandate carries a `payment.reference` constraint with
+- The L2 payment mandate carries a `mandate.payment.reference` constraint with
   `conditional_transaction_id` as a pre-commitment before the checkout JWT exists.
 
 Verifiers MUST recompute the hash from the disclosed `checkout_jwt` and compare
@@ -473,9 +473,9 @@ verification procedure for `checkout_jwt` are **implementation-defined**.
 3. Verifiers that have access to the merchant's public key SHOULD verify the
    `checkout_jwt` signature before accepting the checkout mandate.
 
-**Conditional requirement — `allowed_merchant` enforcement:**
+**Conditional requirement — `mandate.checkout.allowed_merchants` enforcement:**
 
-When the L2 checkout mandate contains an `allowed_merchant` constraint, the `checkout_jwt` payload MUST include a machine-readable merchant identifier (`id` field matching the merchant object schema). Without it, verifiers cannot populate `fulfillment.merchant` and the allowlist constraint cannot be enforced. Implementations that issue `allowed_merchant` constraints MUST ensure their `checkout_jwt` schema provides this field.
+When the L2 checkout mandate contains an `mandate.checkout.allowed_merchants` constraint, the `checkout_jwt` payload MUST include a machine-readable merchant identifier (`id` field matching the merchant object schema). Without it, verifiers cannot populate `fulfillment.merchant` and the allowlist constraint cannot be enforced. Implementations that issue `mandate.checkout.allowed_merchants` constraints MUST ensure their `checkout_jwt` schema provides this field.
 
 **Practical role in Immediate mode:** In Immediate mode, the agent creates the `checkout_jwt` representing the cart contents during the checkout interaction. The merchant has the opportunity to record the checkout session details at this point. When L2 is later presented to the merchant with the checkout mandate disclosed, the merchant validates the `checkout_jwt` contents against its own catalog and checkout records — confirming that the items, quantities, and prices represent a valid order. If the `checkout_jwt` is merchant-signed (per the SHOULD guidance above), the merchant can also verify its own signature for additional integrity assurance. The user's L2 signature proves they authorized this specific checkout. See the [Specification Overview §7](README.md#7-credential-lifecycle) for the full Immediate mode flow.
 
@@ -508,7 +508,7 @@ of exactly one checkout mandate and one payment mandate, linked by a pair identi
 - **Immediate mode**: pair identifier is `checkout_hash` (present on both mandates as
   `checkout_hash` and `transaction_id`).
 - **Autonomous mode**: pair identifier is `conditional_transaction_id` in the
-  `payment.reference` constraint of the payment mandate.
+  `mandate.payment.reference` constraint of the payment mandate.
 
 V0.1 supports multiple mandate pairs within a single L2, enabling multi-merchant
 purchases (each pair targets a different merchant). **Split-tender** — where a
@@ -524,7 +524,7 @@ their pair identifier. The pairing algorithm works as follows:
   `B64U(SHA-256(ASCII(checkout_jwt)))`. The payment mandate whose
   `transaction_id` equals this hash is the pair partner.
 - **Autonomous mode**: For each payment mandate, extract
-  `conditional_transaction_id` from its `payment.reference` constraint. The
+  `conditional_transaction_id` from its `mandate.payment.reference` constraint. The
   checkout mandate whose disclosure hash equals this value is the pair partner.
 
 Verifiers MUST:
@@ -565,7 +565,7 @@ provided disclosures.
 
 ### 9.2 Nested Disclosures (Autonomous Mode)
 
-In Autonomous mode, individual entries within `allowed_merchants` and `line_items`
+In Autonomous mode, individual entries within `allowed` and `line_items`
 constraints are themselves selectively disclosable. Each entry is a separate
 SD-JWT disclosure, referenced by hash from the constraint object. This allows the
 agent to disclose only the selected merchant or items to each verifier.
@@ -674,18 +674,18 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 {
   "vct": "mandate.checkout.open",
   "cnf": {
-    "kid": "agent-key-1",
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
       "x": "agent-public-key-x-component",
-      "y": "agent-public-key-y-component"
+      "y": "agent-public-key-y-component",
+      "kid": "agent-key-1"
     }
   },
   "constraints": [
     {
-      "type": "mandate.checkout.allowed_merchant",
-      "allowed_merchants": [
+      "type": "mandate.checkout.allowed_merchants",
+      "allowed": [
         {"...": "<hash-of-audioshop-disclosure>"},
         {"...": "<hash-of-soundstore-disclosure>"}
       ]
@@ -707,12 +707,12 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 {
   "vct": "mandate.payment.open",
   "cnf": {
-    "kid": "agent-key-1",
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
       "x": "agent-public-key-x-component",
-      "y": "agent-public-key-y-component"
+      "y": "agent-public-key-y-component",
+      "kid": "agent-key-1"
     }
   },
   "payment_instrument": {
@@ -722,20 +722,20 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
   },
   "constraints": [
     {
-      "type": "payment.amount",
+      "type": "mandate.payment.amount_range",
       "currency": "USD",
       "min": 0,
       "max": 30000
     },
     {
-      "type": "payment.allowed_payee",
-      "allowed_payees": [
+      "type": "mandate.payment.allowed_payees",
+      "allowed": [
         { "name": "AudioShop Inc.", "website": "https://audioshop.example.com" },
         { "name": "SoundStore", "website": "https://soundstore.example.com" }
       ]
     },
     {
-      "type": "payment.reference",
+      "type": "mandate.payment.reference",
       "conditional_transaction_id": "checkout-ref-9f3a2b1c"
     }
   ]
@@ -878,9 +878,9 @@ A conformant L2 construction implementation:
 2. MUST compute `sd_hash` as `B64U(SHA-256(ASCII(serialized_L1)))`.
 3. MUST set `typ` to `"kb-sd-jwt"` (Immediate) or `"kb-sd-jwt+kb"` (Autonomous).
 4. In Immediate mode: mandates MUST contain final values and MUST NOT contain `cnf` claims.
-5. In Autonomous mode: mandates MUST contain `cnf.jwk` binding the agent's key and `cnf.kid` with the key identifier, and MUST contain at least one constraint.
+5. In Autonomous mode: mandates MUST contain `cnf.jwk` binding the agent's key and `cnf.jwk.kid` with the key identifier, and MUST contain at least one constraint.
 6. In Immediate mode: MUST compute `checkout_hash` and include it in the checkout mandate and as `transaction_id` in the payment mandate.
-7. In Autonomous mode: MUST include a `payment.reference` constraint with `conditional_transaction_id` in the payment mandate.
+7. In Autonomous mode: MUST include a `mandate.payment.reference` constraint with `conditional_transaction_id` in the payment mandate.
 8. MUST use VCT values exactly as defined in the VCT Registry (§10).
 
 ### 13.3 Agent (L3) Conformance
@@ -889,7 +889,7 @@ A conformant Agent implementation:
 
 1. MUST create two KB-SD-JWTs (L3a, L3b) signed by the key bound in L2 mandate `cnf.jwk`.
 2. MUST set `typ` to `"kb-sd-jwt"` in both L3a and L3b.
-3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.kid`. MUST NOT include a `jwk` parameter in L3 headers.
+3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.jwk.kid`. MUST NOT include a `jwk` parameter in L3 headers.
 4. MUST NOT include a `cnf` claim in L3 payloads.
 5. MUST compute selective `sd_hash` for each L3 per §5.4.
 6. MUST represent `amount` as an integer in minor units in L3a final mandates.
@@ -907,7 +907,7 @@ A conformant Verifier implementation:
 4. MUST verify the delegation chain (L1 `cnf` → L2 signer; L2 mandate `cnf` → L3 signer).
 5. MUST verify `sd_hash` bindings between adjacent layers.
 6. MUST check `exp` at all layers (clock skew tolerance: 300 seconds recommended).
-7. In Autonomous mode: MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching L3 header `kid` against L2 `cnf.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
+7. In Autonomous mode: MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching L3 header `kid` against L2 `cnf.jwk.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
 8. In Autonomous mode: MUST reject any L3 payload containing a `cnf` claim.
 9. When both checkout and payment mandates are disclosed: MUST verify `checkout_hash == transaction_id`.
 10. MUST check L3 values against disclosed L2 constraints. Machine-enforceable constraints MUST be verified; descriptive fields are informational.

@@ -55,9 +55,9 @@ def verify_l2_reference_binding(
     payment_mandate_dict: dict,
     checkout_disclosure_b64: str,
 ) -> tuple[bool, str]:
-    """Verify the L2 payment.reference constraint binds to the L2 checkout mandate.
+    """Verify the L2 mandate.payment.reference constraint binds to the L2 checkout mandate.
 
-    In Autonomous mode, the L2 payment mandate carries a payment.reference
+    In Autonomous mode, the L2 payment mandate carries a mandate.payment.reference
     constraint with conditional_transaction_id = hash of the checkout disclosure.
 
     Returns (valid, error_message).
@@ -65,7 +65,7 @@ def verify_l2_reference_binding(
     constraints = payment_mandate_dict.get("constraints") or []
     ref_constraint = None
     for c in constraints:
-        if isinstance(c, dict) and c.get("type") == "payment.reference":
+        if isinstance(c, dict) and c.get("type") == "mandate.payment.reference":
             ref_constraint = c
             break
 
@@ -74,7 +74,7 @@ def verify_l2_reference_binding(
 
     expected_id = ref_constraint.get("conditional_transaction_id", "")
     if not expected_id:
-        return False, "payment.reference missing required conditional_transaction_id"
+        return False, "mandate.payment.reference missing required conditional_transaction_id"
 
     # Compute hash of the checkout disclosure string
     computed_hash = hash_disclosure(checkout_disclosure_b64)

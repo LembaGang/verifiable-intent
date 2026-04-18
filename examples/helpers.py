@@ -376,7 +376,7 @@ def validate_intent(
             disc_by_hash[hash_disclosure(disc_str)] = disc_val
 
         for c in payment_constraints:
-            if c.get("type") == "payment.allowed_payee":
+            if c.get("type") == "mandate.payment.allowed_payees":
                 resolved_merchants = []
                 for ref in c.get("allowed_payees", []):
                     ref_hash = ref.get("...", "") if isinstance(ref, dict) else ""

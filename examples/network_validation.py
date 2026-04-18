@@ -118,7 +118,7 @@ def main():
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[
-                    AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                    AllowedMerchantConstraint(allowed=MERCHANTS),
                     CheckoutLineItemsConstraint(
                         items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
                     ),
@@ -131,7 +131,7 @@ def main():
                 payment_instrument=PAYMENT_INSTRUMENT,
                 constraints=[
                     PaymentAmountConstraint(currency="USD", min=10000, max=40000),
-                    AllowedPayeeConstraint(allowed_payees=MERCHANTS),
+                    AllowedPayeeConstraint(allowed=MERCHANTS),
                 ],
             ),
             merchants=MERCHANTS,
@@ -266,8 +266,8 @@ def main():
         disc_by_hash[hash_disclosure(disc_str)] = disc_val
 
     for c in payment_constraints:
-        if c.get("type") == "payment.allowed_payee":
-            allowed_refs = c.get("allowed_payees", [])
+        if c.get("type") == "mandate.payment.allowed_payees":
+            allowed_refs = c.get("allowed", [])
             resolved_merchants = []
             for ref in allowed_refs:
                 ref_hash = ref.get("...", "") if isinstance(ref, dict) else ""

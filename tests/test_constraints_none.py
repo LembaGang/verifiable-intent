@@ -20,7 +20,7 @@ class TestConstraintsNoneGuard:
         payment = {
             "vct": "mandate.payment.open",
             "constraints": [
-                {"type": "payment.reference", "conditional_transaction_id": "abc123"},
+                {"type": "mandate.payment.reference", "conditional_transaction_id": "abc123"},
             ],
         }
         # Must not raise TypeError — should return a clean validation error instead
