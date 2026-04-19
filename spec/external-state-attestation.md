@@ -1,9 +1,9 @@
 # Verifiable Intent — External State Attestation Constraint Proposal
 
 **Type identifier**: `environment.market_state`
-**Version**: 0.3-draft
+**Version**: 0.5-draft
 **Status**: Draft / Proposed for Registration
-**Date**: 2026-04-18
+**Date**: 2026-04-19
 **Author**: Headless Oracle Project (headlessoracle.com)
 **License**: Apache 2.0
 
@@ -625,6 +625,31 @@ can evolve without spec revisions.
 > fail-closed-negotiation requirement. One family-wide question, one answer,
 > two specs.
 
+### 4.8 Field Scope Declaration
+
+The `environment.*` constraint family contains fields that appear under identical names in multiple constraint types. A shared field name does not, by itself, imply shared semantics: some fields carry identical meaning across types, while others have parallel-but-mechanism-specific meaning tied to each type's trust-root mechanism. To prevent ambiguity, each field in the family MUST declare its scope under one of the categories below.
+
+**Scope categories.** The family currently recognises two scope categories:
+
+- **family-wide-trust-root-agnostic** — the field carries identical semantics across every `environment.*` constraint type, independent of the trust-root mechanism each type uses. A single verification code path handles the field for every type in the family.
+
+- **per-type-trust-root-mechanism-bound** — the field's operational semantics depend on the specific trust-root mechanism of the constraint type (RFC 7517 JWKS for `environment.wallet_state`, RFC 8615 key registry for `environment.market_state`, or a future mechanism). The field name may appear in multiple specifications with parallel but mechanism-specific semantics.
+
+**Scope declarations for current `environment.market_state` fields.**
+
+| Field | Scope | Reference |
+|-------|-------|-----------|
+| `max_attestation_age` | family-wide-trust-root-agnostic | §4.6 |
+| `stale_cache_fallback_permitted` | per-type-trust-root-mechanism-bound | §6.8 |
+
+`max_attestation_age` is family-wide because the freshness window is a temporal property of the attestation signing event itself, independent of how the verifier retrieves the signing key. `stale_cache_fallback_permitted` is per-type because the failure mode of "stale cache fallback" is defined only against the specific cache of the constraint type's trust-root mechanism — the JWKS cache for `environment.wallet_state`, the RFC 8615 key registry cache for `environment.market_state` — and the recovery behaviour (and trust-root binding implications per §6.3) differs between mechanisms.
+
+**Rule for future fields.** New fields introduced in any `environment.*` constraint type in future specification revisions MUST declare their scope category at introduction. Declarations are made in the constraint type's Field Scope Declaration section (this section, §4.8 in `environment.market_state`; the analogous section in each sibling specification). Additions of new scope categories beyond the two currently recognised are working-group revisions; type authors SHOULD place fields under one of the existing categories where possible rather than proposing new categories.
+
+**Relationship to §4.6 and §4.7.** This section formalises at charter level the field-scope distinction that §4.6 (freshness) and §4.7 (algorithm agility) already imply in their specific domains: §4.6 states that `max_attestation_age` is family-wide; §4.7 establishes per-type MUST-implement algorithms with family-wide agility framework. §4.8 makes the underlying scope discipline — "which fields are family-wide, which are per-type, and why" — explicit so that future fields are not added to the family without a scope declaration.
+
+> **Note on family coordination**: Drafted as a standalone block adoptable verbatim in `environment.wallet_state` §4.8 with the field table rows swapped for that specification's current fields (`trusted_jwks`, `subject_wallet`, and the sibling declaration of `stale_cache_fallback_permitted` under its JWKS-specific mechanism). Same pattern as §4.6, §4.7, §5.5, §6.8 — one family-wide question, one answer, two specs.
+
 ---
 
 ## 5. Validation Algorithm Integration
@@ -1069,6 +1094,7 @@ def check_market_state_constraint(constraint: dict, now: datetime = None) -> dic
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.5-draft | 2026-04-19 | **§4.8 Field Scope Declaration**: new family-charter section formalising field scope at charter level. Two scope categories defined: `family-wide-trust-root-agnostic` (fields whose semantics are independent of trust-root mechanism — `max_attestation_age` per §4.6) and `per-type-trust-root-mechanism-bound` (fields whose operational semantics depend on the type's trust-root mechanism — `stale_cache_fallback_permitted` per §6.8). Rule for future fields: all new `environment.*` fields MUST declare scope category at introduction. Section placement preserves §4.6 normative text unchanged; §4.8 formalises the scope distinction §4.6 and §4.7 already imply. Also retroactively bumps document header from 0.3-draft to 0.5-draft, capturing the v0.4 commit's omission of the header update. Drafted as standalone block adoptable verbatim in `environment.wallet_state` §4.8 with per-type field-table rows swapped. No algorithm changes; no security-model changes; no Headless Oracle code changes required. Co-drafted with Douglas Borthwick. |
 | 0.4-draft | 2026-04-18 | **§6.8 Key Registry Caching and Key Rotation**: new section lifted from PR #22 bb7af90 with terminology adapted to RFC 8615 key registry (JWKS → key registry, kid → key_id, trusted_jwks → issuer-derived registry URL). Grace-window discoverability SHOULD paragraph integrated. **stale_cache_fallback_permitted**: new OPTIONAL boolean field with fail-secure default=false and boolean-type hygiene clause (§4 schema, Field Constraints, §4.2 Step 1, §6.8 companion). Payment-execution deployments MUST NOT set to true. **§6.3 asymmetry**: PR #22 bb7af90's §6.3 JWKS URL migration paragraph intentionally NOT lifted — trust-root binding differs between types (wallet_state: signed L2 trusted_jwks; market_state: issuer-derived registry URL per §6.3's JWKS/RFC-8615 coexistence paragraph). **v0.5 queued**: formalize trust-root-binding as explicit family-charter dimension. Co-drafted with Douglas Borthwick. |
 | 0.3.2-draft | 2026-04-18 | RFC 2119 audit pass, P1 fix. **`max_attestation_age` strictness**: removed absent-case default of 60 seconds from the §4 schema row, the §4 Field Constraints bullet, the §4.2 pseudocode (Step 1), and both JS and Python reference implementations. Missing `max_attestation_age` is now uniformly malformed; verifiers MUST reject per §4.2 Step 1. Closes the v0.2 contradiction between REQUIRED elevation and retained default. **§6.5 Constraint Stripping**: added normative sentence requiring verifiers to reject mandates whose Layer 2 signature does not validate over the full constraint list, and prohibiting acceptance of subset-signed mandates. No architectural changes; no family-wide changes; no Headless Oracle code changes required. |
 | 0.3-draft | 2026-04-18 | Adds §5.5 Family Composition in response to the held-back follow-ups from PR #22 v0.2 review. Co-drafted with Douglas Borthwick (InsumerAPI) over PRs #9 and #22; mirrors PR #22 §5.5 (commit 85cfaa0) with two refinements agreed in [PR #22 discussion](https://github.com/agent-intent/verifiable-intent/pull/22). **Conjunction semantics**: the `environment.*` family is a conjunction; no partial-fulfillment path within the family. **Completeness rule (Gap 1)**: verifiers MUST evaluate every `environment.*` constraint to completion before refusing L3; short-circuit evaluation is non-conforming. Composes with §5.2 ordering. **Per-member disambiguation (Gap 2)**: every violation entry carries both an array-index machine identifier and a per-type human-readable identifier (MIC for `market_state`, `subject_wallet` for `wallet_state`); multi-exchange example in §4.5 is the driving case. **Rationale** presents semantic and architectural arguments as co-equal — conjunction as a family membership criterion, not a per-type design decision. Drafted as standalone block adoptable verbatim in `environment.wallet_state` §5.5. No changes elsewhere in the spec; no verification algorithm, fail-closed, or security-model changes; no Headless Oracle code changes required. |
