@@ -104,13 +104,13 @@ def main():
         sd_hash=hash_bytes(l1.serialize().encode("ascii")),
         prompt_summary="Purchase Babolat Pure Aero racket",
         checkout_mandate=CheckoutMandate(
-            vct="mandate.checkout",
+            vct="mandate.checkout.1",
             # No cnf_jwk — user signs final values directly
             checkout_jwt=checkout_jwt,
             checkout_hash=c_hash,
         ),
         payment_mandate=PaymentMandate(
-            vct="mandate.payment",
+            vct="mandate.payment.1",
             # No cnf_jwk — final payment values set by user
             payment_instrument=PAYMENT_INSTRUMENT,
             payee=MERCHANTS[0],

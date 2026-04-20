@@ -121,28 +121,26 @@ def main():
         sd_hash=hash_bytes(l1.serialize().encode("ascii")),
         prompt_summary="Buy a Babolat tennis racket under $400",
         checkout_mandate=CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS, "quantity": 1}],
                 ),
             ],
         ),
         payment_mandate=PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
             risk_data={"device_id": "android1234", "ip_address": "192.168.1.100"},
             constraints=[
                 PaymentAmountConstraint(currency="USD", min=10000, max=40000),
-                AllowedPayeeConstraint(allowed_payees=MERCHANTS),
-                PaymentRecurrenceConstraint(
-                    frequency="ANNUALLY", start_date="2026-01-01", end_date="2028-01-01", number=3
-                ),
+                AllowedPayeeConstraint(allowed=MERCHANTS),
+                PaymentRecurrenceConstraint(frequency="YEAR", start_date="2026-01-01", end_date="2028-01-01", number=3),
             ],
         ),
         merchants=MERCHANTS,
@@ -174,7 +172,7 @@ def main():
     checkout_constraints = {}
     for delegate in l2_claims.get("delegate_payload", []):
         if isinstance(delegate, dict):
-            if delegate.get("vct") == "mandate.checkout.open":
+            if delegate.get("vct") == "mandate.checkout.open.1":
                 for c in delegate.get("constraints", []):
                     if c.get("type") == "mandate.checkout.line_items":
                         checkout_constraints = c
@@ -229,8 +227,8 @@ def main():
     l2_base_jwt = l2_ser.split("~")[0]
 
     # Find L2 disclosures for sd_hash computation
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -349,13 +347,13 @@ def main():
 
         payment_constraints = []
         for delegate in l2_pay_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.open.1":
                 payment_constraints = delegate.get("constraints", [])
                 break
 
         fulfillment = {}
         for delegate in l3_pay_claims.get("delegate_payload", []):
-            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment":
+            if isinstance(delegate, dict) and delegate.get("vct") == "mandate.payment.1":
                 fulfillment = delegate
                 break
 
@@ -367,9 +365,9 @@ def main():
             disc_by_hash[hash_disclosure(disc_str)] = disc_val
 
         for c in payment_constraints:
-            if c.get("type") == "payment.allowed_payee":
+            if c.get("type") == "mandate.payment.allowed_payees":
                 resolved_merchants = []
-                for ref in c.get("allowed_payees", []):
+                for ref in c.get("allowed", []):
                     ref_hash = ref.get("...", "") if isinstance(ref, dict) else ""
                     if ref_hash and ref_hash in disc_by_hash:
                         resolved_merchants.append(disc_by_hash[ref_hash][-1])

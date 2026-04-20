@@ -106,18 +106,18 @@ def _make_single_pair_l2(now, l1_ser, checkout_items, merchants, acceptable_item
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=merchants),
+            AllowedMerchantConstraint(allowed=merchants),
             CheckoutLineItemsConstraint(
                 items=[{"id": "li-1", "acceptable_items": acceptable_items[:1], "quantity": 1}]
             ),
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=payment_instrument,
@@ -159,9 +159,9 @@ def _make_split_l3(l2, l2_base_jwt, checkout_jwt, c_hash, merchants, now):
     """Create L3a + L3b for a single mandate pair."""
     agent = get_agent_keys()
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == merchants[0]["name"])
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
     # L3a
@@ -208,12 +208,12 @@ def _make_immediate_pair(now, l1_ser, checkout_items):
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         transaction_id=c_hash,
         payment_instrument=PAYMENT_INSTRUMENT,
         currency="USD",
@@ -277,8 +277,8 @@ class TestSinglePairBackwardCompat:
         assert result.mandate_pair_count == 1
         assert len(result.pair_results) == 1
         assert result.pair_results[0].pair_index == 0
-        assert result.pair_results[0].checkout_mandate.get("vct") == "mandate.checkout.open"
-        assert result.pair_results[0].payment_mandate.get("vct") == "mandate.payment.open"
+        assert result.pair_results[0].checkout_mandate.get("vct") == "mandate.checkout.open.1"
+        assert result.pair_results[0].payment_mandate.get("vct") == "mandate.payment.open.1"
         # Legacy fields populated from first pair
         assert result.l3_payment_claims
         assert result.l3_checkout_claims
@@ -301,8 +301,8 @@ class TestSinglePairBackwardCompat:
         assert result.valid, f"Chain verification failed: {result.errors}"
         assert result.mandate_pair_count == 1
         assert len(result.pair_results) == 1
-        assert result.pair_results[0].checkout_mandate.get("vct") == "mandate.checkout"
-        assert result.pair_results[0].payment_mandate.get("vct") == "mandate.payment"
+        assert result.pair_results[0].checkout_mandate.get("vct") == "mandate.checkout.1"
+        assert result.pair_results[0].payment_mandate.get("vct") == "mandate.payment.1"
 
 
 class TestTwoPairImmediate:
@@ -371,13 +371,13 @@ class TestTwoPairAutonomous:
 
         # Find disclosures for pair A (from merged L2)
         payment_disc_a = _find_disclosure(
-            l2_merged, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open"
+            l2_merged, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1"
         )
         merchant_disc_a = _find_disclosure(
             l2_merged, lambda v: isinstance(v, dict) and v.get("name") == MERCHANTS[0]["name"]
         )
         checkout_disc_a = _find_disclosure(
-            l2_merged, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open"
+            l2_merged, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
         )
         item_disc_a = _find_disclosure(l2_merged, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -389,9 +389,9 @@ class TestTwoPairAutonomous:
         for ds, dv in zip(l2_merged.disclosures, l2_merged.disclosure_values):
             val = dv[-1] if dv else None
             if isinstance(val, dict):
-                if val.get("vct") == "mandate.payment.open":
+                if val.get("vct") == "mandate.payment.open.1":
                     all_payment_discs.append(ds)
-                elif val.get("vct") == "mandate.checkout.open":
+                elif val.get("vct") == "mandate.checkout.open.1":
                     all_checkout_discs.append(ds)
 
         assert len(all_payment_discs) >= 2, "Need 2 payment mandate disclosures"
@@ -555,9 +555,9 @@ class TestSplitL3SwapRejected:
         for ds, dv in zip(l2_merged.disclosures, l2_merged.disclosure_values):
             val = dv[-1] if dv else None
             if isinstance(val, dict):
-                if val.get("vct") == "mandate.payment.open":
+                if val.get("vct") == "mandate.payment.open.1":
                     all_payment_discs.append(ds)
-                elif val.get("vct") == "mandate.checkout.open":
+                elif val.get("vct") == "mandate.checkout.open.1":
                     all_checkout_discs.append(ds)
                 elif val.get("name") == MERCHANTS[0]["name"]:
                     all_merchant_discs.append(ds)
@@ -687,7 +687,7 @@ class TestSmuggling:
 
         # Create a second checkout mandate disclosure with the SAME checkout_hash
         smuggled_checkout = {
-            "vct": "mandate.checkout",
+            "vct": "mandate.checkout.1",
             "checkout_jwt": checkout_jwt,
             "checkout_hash": c_hash,
         }
@@ -724,7 +724,7 @@ class TestSmuggling:
         checkout_ref_hash = None
         for ds, dv in zip(l2.disclosures, l2.disclosure_values):
             val = dv[-1] if dv else None
-            if isinstance(val, dict) and val.get("vct") == "mandate.checkout.open":
+            if isinstance(val, dict) and val.get("vct") == "mandate.checkout.open.1":
                 checkout_ref_hash = hash_disclosure(ds)
                 break
         assert checkout_ref_hash is not None

@@ -68,12 +68,12 @@ def _make_immediate_l2(user, l1, now):
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],
@@ -95,18 +95,18 @@ def _make_immediate_l2(user, l1, now):
 def _make_autonomous_l2(user, agent, l1, now):
     """Build a valid Autonomous-mode L2 (open VCTs, agent key bound)."""
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
             ),
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -229,7 +229,7 @@ def test_mixed_mode_vcts_rejected():
     open_disc = create_disclosure(
         "delegate_payload",
         {
-            "vct": "mandate.checkout.open",
+            "vct": "mandate.checkout.open.1",
             "constraints": [],
         },
         salt="salt-open-abc12345",
@@ -237,7 +237,7 @@ def test_mixed_mode_vcts_rejected():
     final_disc = create_disclosure(
         "delegate_payload",
         {
-            "vct": "mandate.payment",
+            "vct": "mandate.payment.1",
             "transaction_id": "tid-123",
             "currency": "USD",
             "amount": 27999,

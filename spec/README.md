@@ -21,13 +21,13 @@ definitions and validation rules, see [constraints.md](constraints.md).
 
 ### Companion Documents
 
-| Document | Description |
-|----------|-------------|
-| [credential-format.md](credential-format.md) | Normative credential format, claim tables, and serialization |
-| [constraints.md](constraints.md) | Constraint type definitions and validation rules |
-| [security-model.md](security-model.md) | Threat model and security analysis |
-| [design-rationale.md](design-rationale.md) | Why SD-JWT, relationship to OpenID4VP/FIDO2/SCA, algorithm choice |
-| [glossary.md](../protocol-landscape/glossary.md) | Full glossary with protocol-specific mappings |
+| Document                                         | Description                                                       |
+| ------------------------------------------------ | ----------------------------------------------------------------- |
+| [credential-format.md](credential-format.md)     | Normative credential format, claim tables, and serialization      |
+| [constraints.md](constraints.md)                 | Constraint type definitions and validation rules                  |
+| [security-model.md](security-model.md)           | Threat model and security analysis                                |
+| [design-rationale.md](design-rationale.md)       | Why SD-JWT, relationship to OpenID4VP/FIDO2/SCA, algorithm choice |
+| [glossary.md](../protocol-landscape/glossary.md) | Full glossary with protocol-specific mappings                     |
 
 ---
 
@@ -52,37 +52,37 @@ The following notation is used throughout this specification:
 
 ## 2. Terminology
 
-| Term | Definition |
-|------|------------|
-| **Issuer** | Entity that creates and signs the L1 credential. Either a financial institution (bank) that issued the user's payment card, or a payment network (Mastercard) acting on the bank's behalf. Responsible for user identity verification and L1 signing. Issues L1 into a Credential Provider's wallet. The VI Issuer role (signing L1) is distinct from the payment card issuer role (underwriting the account), even when the same entity fills both. |
-| **Credential Provider** | Entity that hosts the wallet infrastructure where L1 credentials are stored and where users create L2 credentials. Examples include digital wallet providers and payment platforms. The Credential Provider provides the wallet; the Issuer signs the credentials that go into it. Distinct from the Issuer, which creates and signs L1.|
-| **User** | End-user (the delegating principal) who creates Layer 2 mandates expressing purchase intent. The user is the ultimate authority in the delegation chain. In protocol descriptions, "the user creates L2" refers to any authorized system holding the user's private key — see [security-model.md §3.5](security-model.md#35-deployment-models). |
-| **Agent** | AI-powered software that acts on behalf of the user. In Autonomous mode, the agent creates Layer 3 mandates fulfilling user constraints. |
-| **Merchant** | Entity that sells goods or services. The merchant creates signed checkout JWTs and processes checkout requests. |
-| **Payment Network** | Entity that routes and settles payment transactions. Validates the VI credential chain as a pre-authorization step during transaction routing. |
-| **Verifier** | Any party that validates a VI credential chain. Merchants and payment networks are the primary verifiers. |
-| **SD-JWT** | Selective Disclosure JWT as defined in RFC 9901. A JWT that supports selective disclosure of claims using hash-based commitments. Uses the combined format: `<JWT>~<Disclosure 1>~<Disclosure 2>~...~` |
-| **KB-SD-JWT** | Key-Bound SD-JWT. An SD-JWT that proves key binding through: (1) an `sd_hash` claim binding it to a prior layer credential, (2) a signature created with a private key matching the public key in the prior layer's `cnf.jwk` claim, and (3) a `kid` header parameter that verifiers match against the prior layer's `cnf.kid` to resolve the signing key. L3a and L3b use this format (`typ: "kb-sd-jwt"`). |
-| **KB-SD-JWT+KB** | Key-Bound SD-JWT with Key Binding for further delegation. Extends KB-SD-JWT by including a `cnf.jwk` claim in the payload to enable the next layer of delegation. L2 uses this format in Autonomous mode (`typ: "kb-sd-jwt+kb"`). The "+kb" suffix indicates the credential carries key binding for onward delegation. |
-| **Layer 1 (L1)** | The Credential Provider SD-JWT. Binds the user's identity and public key via `cnf.jwk`. Does not contain `sd_hash` (it's the root credential). Long-lived (~1 year). |
-| **Layer 2 (L2)** | The User KB-SD-JWT or KB-SD-JWT+KB. Contains mandates expressing the user's purchase intent — either final values (Immediate mode, `typ: "kb-sd-jwt"`) or constraints (Autonomous mode, `typ: "kb-sd-jwt+kb"`). Contains `sd_hash` binding to L1. In Autonomous mode, includes `cnf.jwk` in mandates to bind the agent's key for L3 delegation. |
-| **Layer 3 (L3)** | The Agent KB-SD-JWT(s) (Autonomous mode only). In Autonomous mode, L3 splits into two KB-SD-JWT credentials: L3a (payment mandate, sent to the payment network) and L3b (checkout mandate, sent to the merchant). Each contains the agent's fulfillment of user constraints with concrete purchase values. Contains `sd_hash` binding to L2 + relevant disclosures. Short-lived (~5 minutes). `typ: "kb-sd-jwt"` |
-| **Mandate** | A selectively disclosable claim within a KB-SD-JWT that expresses intent for a specific aspect of a transaction (checkout or payment). |
-| **Checkout Mandate** | A mandate with `vct: "mandate.checkout.open"` (Autonomous L2) or `vct: "mandate.checkout"` (Immediate L2 / L3b) that describes allowed or finalized checkout contents. |
-| **Payment Mandate** | A mandate with `vct: "mandate.payment.open"` (Autonomous L2) or `vct: "mandate.payment"` (Immediate L2 / L3a) that describes allowed or finalized payment parameters. |
-| **Mandate Pair** | A checkout mandate and its corresponding payment mandate within the same L2, linked by `checkout_hash` binding (Immediate) or `conditional_transaction_id` in `payment.reference` constraint (Autonomous). In v0.1, each mandate pair represents a single authorized transaction — exactly one L3a + L3b pair (Autonomous) or a final transaction record (Immediate). A future extension for multi-transaction mandate pairs will likely allow multiple L3 fulfillments per pair within defined bounds. |
-| **Constraint** | A typed rule within an Autonomous mode mandate that bounds the agent's authority (e.g., budget limit, allowed SKUs, approved merchants). |
-| **Delegation Chain** | The sequence of cryptographic bindings (L1 → L2 → L3) where each layer's signing key is bound by the `cnf` claim of the previous layer. |
-| **Disclosure** | A base64url-encoded JSON array containing a salt and a claim value, used for selective disclosure per [RFC 9901]. |
-| **`sd_hash`** | A SHA-256 hash binding each layer to the serialized form of the previous layer. Ensures that the serialized prior credential as received by the signer has not been modified. See §3.2. |
-| **`cnf` (Confirmation)** | A claim defined in [RFC 7800] that binds a JWT to a specific cryptographic key. VI uses `cnf` claims at each delegation layer to create the authorization chain. L1 contains `cnf.jwk` binding the user's key. L2 mandates contain `cnf.kid` and `cnf.jwk` binding the agent's key (Autonomous mode only). L3 does not contain `cnf` (terminal delegation); the agent's key is resolved from L2 via `kid` matching. |
-| **`checkout_hash`** | A SHA-256 hash of the `checkout_jwt` string, binding checkout and payment mandates. Checkout mandates carry this hash as `checkout_hash`; payment mandates carry the same hash as `transaction_id`. In Autonomous mode, L3a (`transaction_id`) and L3b (`checkout_hash`) cross-reference the split L3 credentials. |
-| **`delegate_payload`** | An array of SD-JWT disclosure references (`{"...": "<hash>"}`) in the KB-SD-JWT payload that point to the selectively disclosable mandate claims. |
-| **Fulfillment** | The concrete values in an L3 mandate that satisfy the constraints from the corresponding L2 mandate. For example, a specific merchant selection that satisfies an `allowed_merchant` constraint. |
-| **Split L3** | The pair of L3 credentials in Autonomous mode: L3a (payment mandate, sent to the payment network) and L3b (checkout mandate, sent to the merchant). Each contains a selective `sd_hash` over only the L2 disclosures its recipient sees. |
-| **Network-Enforced Constraint** | A constraint type whose enforcement requires state tracking across multiple transactions. Includes `payment.budget`, `payment.recurrence`, and `payment.agent_recurrence`. These cannot be verified by a stateless verifier — the payment network maintains cumulative state. |
-| **Immediate Mode** | A 2-layer execution mode (L1 + L2) where the user directly confirms final transaction values. No agent delegation occurs. L2 uses `typ: "kb-sd-jwt"`. |
-| **Autonomous Mode** | A 3-layer execution mode (L1 + L2 + L3) where the user delegates authority to an agent within cryptographically bound constraints. L2 uses `typ: "kb-sd-jwt+kb"` to enable L3 delegation. L3a and L3b use `typ: "kb-sd-jwt"`. |
+| Term                            | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Issuer**                      | Entity that creates and signs the L1 credential. Either a financial institution (bank) that issued the user's payment card, or a payment network (Mastercard) acting on the bank's behalf. Responsible for user identity verification and L1 signing. Issues L1 into a Credential Provider's wallet. The VI Issuer role (signing L1) is distinct from the payment card issuer role (underwriting the account), even when the same entity fills both.                                                            |
+| **Credential Provider**         | Entity that hosts the wallet infrastructure where L1 credentials are stored and where users create L2 credentials. Examples include digital wallet providers and payment platforms. The Credential Provider provides the wallet; the Issuer signs the credentials that go into it. Distinct from the Issuer, which creates and signs L1.                                                                                                                                                                        |
+| **User**                        | End-user (the delegating principal) who creates Layer 2 mandates expressing purchase intent. The user is the ultimate authority in the delegation chain. In protocol descriptions, "the user creates L2" refers to any authorized system holding the user's private key — see [security-model.md §3.5](security-model.md#35-deployment-models).                                                                                                                                                                 |
+| **Agent**                       | AI-powered software that acts on behalf of the user. In Autonomous mode, the agent creates Layer 3 mandates fulfilling user constraints.                                                                                                                                                                                                                                                                                                                                                                        |
+| **Merchant**                    | Entity that sells goods or services. The merchant creates signed checkout JWTs and processes checkout requests.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Payment Network**             | Entity that routes and settles payment transactions. Validates the VI credential chain as a pre-authorization step during transaction routing.                                                                                                                                                                                                                                                                                                                                                                  |
+| **Verifier**                    | Any party that validates a VI credential chain. Merchants and payment networks are the primary verifiers.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **SD-JWT**                      | Selective Disclosure JWT as defined in RFC 9901. A JWT that supports selective disclosure of claims using hash-based commitments. Uses the combined format: `<JWT>~<Disclosure 1>~<Disclosure 2>~...~`                                                                                                                                                                                                                                                                                                          |
+| **KB-SD-JWT**                   | Key-Bound SD-JWT. An SD-JWT that proves key binding through: (1) an `sd_hash` claim binding it to a prior layer credential, (2) a signature created with a private key matching the public key in the prior layer's `cnf.jwk` claim, and (3) a `kid` header parameter that verifiers match against the prior layer's `cnf.jwk.kid` to resolve the signing key. L3a and L3b use this format (`typ: "kb-sd-jwt"`).                                                                                                |
+| **KB-SD-JWT+KB**                | Key-Bound SD-JWT with Key Binding for further delegation. Extends KB-SD-JWT by including a `cnf.jwk` claim in the payload to enable the next layer of delegation. L2 uses this format in Autonomous mode (`typ: "kb-sd-jwt+kb"`). The "+kb" suffix indicates the credential carries key binding for onward delegation.                                                                                                                                                                                          |
+| **Layer 1 (L1)**                | The Credential Provider SD-JWT. Binds the user's identity and public key via `cnf.jwk`. Does not contain `sd_hash` (it's the root credential). Long-lived (~1 year).                                                                                                                                                                                                                                                                                                                                            |
+| **Layer 2 (L2)**                | The User KB-SD-JWT or KB-SD-JWT+KB. Contains mandates expressing the user's purchase intent — either final values (Immediate mode, `typ: "kb-sd-jwt"`) or constraints (Autonomous mode, `typ: "kb-sd-jwt+kb"`). Contains `sd_hash` binding to L1. In Autonomous mode, includes `cnf.jwk` in mandates to bind the agent's key for L3 delegation.                                                                                                                                                                 |
+| **Layer 3 (L3)**                | The Agent KB-SD-JWT(s) (Autonomous mode only). In Autonomous mode, L3 splits into two KB-SD-JWT credentials: L3a (payment mandate, sent to the payment network) and L3b (checkout mandate, sent to the merchant). Each contains the agent's fulfillment of user constraints with concrete purchase values. Contains `sd_hash` binding to L2 + relevant disclosures. Short-lived (~5 minutes). `typ: "kb-sd-jwt"`                                                                                                |
+| **Mandate**                     | A selectively disclosable claim within a KB-SD-JWT that expresses intent for a specific aspect of a transaction (checkout or payment).                                                                                                                                                                                                                                                                                                                                                                          |
+| **Checkout Mandate**            | A mandate with `vct: "mandate.checkout.open.1"` (Autonomous L2) or `vct: "mandate.checkout.1"` (Immediate L2 / L3b) that describes allowed or finalized checkout contents.                                                                                                                                                                                                                                                                                                                                      |
+| **Payment Mandate**             | A mandate with `vct: "mandate.payment.open.1"` (Autonomous L2) or `vct: "mandate.payment.1"` (Immediate L2 / L3a) that describes allowed or finalized payment parameters.                                                                                                                                                                                                                                                                                                                                       |
+| **Mandate Pair**                | A checkout mandate and its corresponding payment mandate within the same L2, linked by `checkout_hash` binding (Immediate) or `conditional_transaction_id` in `mandate.payment.reference` constraint (Autonomous). In v0.1, each mandate pair represents a single authorized transaction — exactly one L3a + L3b pair (Autonomous) or a final transaction record (Immediate). A future extension for multi-transaction mandate pairs will likely allow multiple L3 fulfillments per pair within defined bounds. |
+| **Constraint**                  | A typed rule within an Autonomous mode mandate that bounds the agent's authority (e.g., budget limit, allowed SKUs, approved merchants).                                                                                                                                                                                                                                                                                                                                                                        |
+| **Delegation Chain**            | The sequence of cryptographic bindings (L1 → L2 → L3) where each layer's signing key is bound by the `cnf` claim of the previous layer.                                                                                                                                                                                                                                                                                                                                                                         |
+| **Disclosure**                  | A base64url-encoded JSON array containing a salt and a claim value, used for selective disclosure per [RFC 9901].                                                                                                                                                                                                                                                                                                                                                                                               |
+| **`sd_hash`**                   | A SHA-256 hash binding each layer to the serialized form of the previous layer. Ensures that the serialized prior credential as received by the signer has not been modified. See §3.2.                                                                                                                                                                                                                                                                                                                         |
+| **`cnf` (Confirmation)**        | A claim defined in [RFC 7800] that binds a JWT to a specific cryptographic key. VI uses `cnf` claims at each delegation layer to create the authorization chain. L1 contains `cnf.jwk` binding the user's key. L2 mandates contain `cnf.jwk.kid` and `cnf.jwk` binding the agent's key (Autonomous mode only). L3 does not contain `cnf` (terminal delegation); the agent's key is resolved from L2 via `kid` matching.                                                                                         |
+| **`checkout_hash`**             | A SHA-256 hash of the `checkout_jwt` string, binding checkout and payment mandates. Checkout mandates carry this hash as `checkout_hash`; payment mandates carry the same hash as `transaction_id`. In Autonomous mode, L3a (`transaction_id`) and L3b (`checkout_hash`) cross-reference the split L3 credentials.                                                                                                                                                                                              |
+| **`delegate_payload`**          | An array of SD-JWT disclosure references (`{"...": "<hash>"}`) in the KB-SD-JWT payload that point to the selectively disclosable mandate claims.                                                                                                                                                                                                                                                                                                                                                               |
+| **Fulfillment**                 | The concrete values in an L3 mandate that satisfy the constraints from the corresponding L2 mandate. For example, a specific merchant selection that satisfies an `mandate.checkout.allowed_merchants` constraint.                                                                                                                                                                                                                                                                                              |
+| **Split L3**                    | The pair of L3 credentials in Autonomous mode: L3a (payment mandate, sent to the payment network) and L3b (checkout mandate, sent to the merchant). Each contains a selective `sd_hash` over only the L2 disclosures its recipient sees.                                                                                                                                                                                                                                                                        |
+| **Network-Enforced Constraint** | A constraint type whose enforcement requires state tracking across multiple transactions. Includes `mandate.payment.budget`, `mandate.payment.recurrence`, and `mandate.payment.agent_recurrence`. These cannot be verified by a stateless verifier — the payment network maintains cumulative state.                                                                                                                                                                                                           |
+| **Immediate Mode**              | A 2-layer execution mode (L1 + L2) where the user directly confirms final transaction values. No agent delegation occurs. L2 uses `typ: "kb-sd-jwt"`.                                                                                                                                                                                                                                                                                                                                                           |
+| **Autonomous Mode**             | A 3-layer execution mode (L1 + L2 + L3) where the user delegates authority to an agent within cryptographically bound constraints. L2 uses `typ: "kb-sd-jwt+kb"` to enable L3 delegation. L3a and L3b use `typ: "kb-sd-jwt"`.                                                                                                                                                                                                                                                                                   |
 
 ---
 
@@ -103,7 +103,7 @@ the execution mode.
 │  cnf.jwk = User Public Key                                  │
 │  NO sd_hash (root credential)                               │
 │  Lifetime: ~1 year                                          │
-│  Signed by: Credential Provider private key                 │
+│  Signed by: Issuer private key                              │
 └───────────────────────────┬─────────────────────────────────┘
                             │ L2 signed by key in L1 cnf.jwk
                             ▼
@@ -116,7 +116,7 @@ the execution mode.
 │  typ: "kb-sd-jwt"           │  typ: "kb-sd-jwt+kb"          │
 │  Final checkout (checkout_jwt)│ Checkout constraints        │
 │  Final payment values       │  Payment constraints          │
-│  NO cnf in mandates         │  cnf.kid+jwk = Agent Key in mandates│
+│  NO cnf in mandates         │  cnf.jwk (with kid) = Agent Key│
 │  sd_hash = hash(L1)         │  sd_hash = hash(L1)           │
 │  Lifetime: ~15 minutes      │  Lifetime: 24 hours – 30 days │
 │  Signed by: User Public Key │  Signed by: User Public Key   │
@@ -162,7 +162,7 @@ cryptographically binds the next layer's signing authority through the `cnf`
 3. In Immediate mode, Layer 2 mandates MUST NOT contain a `cnf` claim.
    The absence of `cnf` signals that no further delegation is permitted.
 
-4. Each Layer 3 JWT header MUST contain a `kid` parameter matching L2 `cnf.kid`.
+4. Each Layer 3 JWT header MUST contain a `kid` parameter matching L2 `cnf.jwk.kid`.
    Verifiers resolve the agent's public key from L2 `cnf.jwk` by matching
    `kid` values. L3 headers MUST NOT contain a `jwk` parameter.
 
@@ -189,7 +189,7 @@ L1 typ: "sd+jwt"                  ← Standard SD-JWT
 L2 signed by User Public Key      ← Proves user created L2
 L2 sd_hash = hash(L1)             ← Binds L2 to L1
 L2 typ: "kb-sd-jwt+kb" (Autonomous) or "kb-sd-jwt" (Immediate)
-L2 mandate cnf.kid + cnf.jwk = Agent Key  ← User binds agent's key (Autonomous only)
+L2 mandate cnf.jwk (with embedded kid) = Agent Key  ← User binds agent's key (Autonomous only)
 
 L3 signed by Agent Key            ← Proves agent created L3
 L3 sd_hash = hash(L2 + disclosures) ← Binds L3 to specific L2 choices
@@ -203,16 +203,16 @@ L3 NO cnf in payload              ← Terminal delegation, no further key bindin
 VI supports two execution modes that differ in the number of credential layers
 and the nature of the user's mandates.
 
-| Aspect | Immediate Mode | Autonomous Mode |
-|--------|----------------|-----------------|
-| **Layers** | 2 (L1 + L2) | 3 (L1 + L2 + L3) |
-| **Human presence** | User reviews and confirms final values | User sets constraints; agent acts independently |
-| **L2 mandate content** | Final checkout JWT, final payment values | Constraints (amount range, line items, payees) + agent key binding |
-| **`cnf` in L2 mandates** | Absent — no delegation | Present — binds agent's public key |
-| **L2 `typ` header** | `kb-sd-jwt` | `kb-sd-jwt+kb` |
-| **L3 `typ` header** | N/A (no L3) | `kb-sd-jwt` |
-| **Agent role** | Forwarding only (no L3 creation) | Selects products, creates checkout, builds L3a + L3b |
-| **Constraint checking** | Not applicable — values are final | Verifier checks L3 values against **disclosed** L2 constraints |
+| Aspect                   | Immediate Mode                           | Autonomous Mode                                                    |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------ |
+| **Layers**               | 2 (L1 + L2)                              | 3 (L1 + L2 + L3)                                                   |
+| **Human presence**       | User reviews and confirms final values   | User sets constraints; agent acts independently                    |
+| **L2 mandate content**   | Final checkout JWT, final payment values | Constraints (amount range, line items, payees) + agent key binding |
+| **`cnf` in L2 mandates** | Absent — no delegation                   | Present — binds agent's public key                                 |
+| **L2 `typ` header**      | `kb-sd-jwt`                              | `kb-sd-jwt+kb`                                                     |
+| **L3 `typ` header**      | N/A (no L3)                              | `kb-sd-jwt`                                                        |
+| **Agent role**           | Forwarding only (no L3 creation)         | Selects products, creates checkout, builds L3a + L3b               |
+| **Constraint checking**  | Not applicable — values are final        | Verifier checks L3 values against **disclosed** L2 constraints     |
 
 ### 3.4 Mandate Types
 
@@ -220,16 +220,16 @@ Each Layer 2 (and Layer 3) credential contains mandates — selectively
 disclosable claims that express specific aspects of the transaction intent.
 VI defines two mandate types:
 
-**Checkout Mandate** (`vct: "mandate.checkout.open"` in Autonomous L2, `vct: "mandate.checkout"` in Immediate L2 / L3b):
+**Checkout Mandate** (`vct: "mandate.checkout.open.1"` in Autonomous L2, `vct: "mandate.checkout.1"` in Immediate L2 / L3b):
 
 Describes what is being purchased. In Immediate mode, contains the finalized
 merchant-signed `checkout_jwt`. In Autonomous mode L2, contains constraints on allowed
 products (line items, quantities, allowed merchants) and the agent's `cnf` (`kid` + `jwk`) for delegation. In L3b, contains the finalized `checkout_jwt` and `checkout_hash`.
 
-**Payment Mandate** (`vct: "mandate.payment.open"` in Autonomous L2, `vct: "mandate.payment"` in Immediate L2 / L3a):
+**Payment Mandate** (`vct: "mandate.payment.open.1"` in Autonomous L2, `vct: "mandate.payment.1"` in Immediate L2 / L3a):
 
 Describes how the purchase is funded. In Immediate mode, contains finalized
-payment details (`payment_instrument`, `currency`, `amount`, `payee`, `transaction_id`, etc.). In
+payment details (`payment_instrument`, `payment_amount`, `payee`, `transaction_id`, etc.). In
 Autonomous mode L2, contains constraints on allowed payment parameters (amount range,
 approved payees, `payment_instrument`) and the agent's `cnf` (`kid` + `jwk`). In L3a, contains the finalized payment values and `transaction_id`.
 
@@ -248,9 +248,9 @@ expected to produce exactly one L3a + L3b pair per mandate pair. Payment network
 enforce this expectation by tracking L3 issuance per L2 mandate pair (see
 [security-model.md §4.2](security-model.md#42-cross-merchant-replay)). This
 rule applies unconditionally in the base model, including for mandate pairs with a
-`payment.recurrence` constraint — this constraint defines the terms of a subscription
+`mandate.payment.recurrence` constraint — this constraint defines the terms of a subscription
 setup (one L3 pair establishes the subscription), not a count of L3s. When a
-`payment.agent_recurrence` constraint is present, multiple L3 pairs are explicitly
+`mandate.payment.agent_recurrence` constraint is present, multiple L3 pairs are explicitly
 authorized within defined bounds (see [constraints.md](constraints.md) §4.7).
 
 Implementations MUST group checkout and payment mandates into pairs by matching
@@ -260,9 +260,9 @@ checkout with no matching payment or vice versa) or duplicate mandates sharing
 the same pair identifier.
 
 In the base model, one mandate pair maps to exactly one L3 pair. The
-`payment.agent_recurrence` constraint enables **multi-transaction mandate pairs**
+`mandate.payment.agent_recurrence` constraint enables **multi-transaction mandate pairs**
 where a single mandate pair authorizes multiple L3 fulfillments within defined
-bounds (occurrence cap, cumulative budget via `payment.budget`, date range).
+bounds (occurrence cap, cumulative budget via `mandate.payment.budget`, date range).
 See [constraints.md](constraints.md) §4.7 and [security-model.md §4.2](security-model.md#42-cross-merchant-replay).
 
 ---
@@ -285,14 +285,14 @@ mandates relevant to its role.
 
 **Layer 1 — Credential Provider SD-JWT:**
 
-| Claim | Always Visible | Selectively Disclosable |
-|-------|:--------------:|:-----------------------:|
-| `iss`, `sub`, `iat`, `exp`, `vct` | Yes | — |
-| `cnf.jwk` | Yes | — |
-| `pan_last_four` | Yes | — |
-| `scheme` | Yes | — |
-| `card_id` (when present) | Yes | — |
-| `email` | — | Yes |
+| Claim                             | Always Visible | Selectively Disclosable |
+| --------------------------------- | :------------: | :---------------------: |
+| `iss`, `sub`, `iat`, `exp`, `vct` |      Yes       |            —            |
+| `cnf.jwk`                         |      Yes       |            —            |
+| `pan_last_four`                   |      Yes       |            —            |
+| `scheme`                          |      Yes       |            —            |
+| `card_id` (when present)          |      Yes       |            —            |
+| `email`                           |       —        |           Yes           |
 
 The always-visible claims establish the credential's provenance, key binding,
 and card identification (`pan_last_four`, `scheme`). The `email` claim is
@@ -301,21 +301,27 @@ verification.
 
 **Layer 2 — User KB-SD-JWT / KB-SD-JWT+KB:**
 
-| Claim | Always Visible | Selectively Disclosable |
-|-------|:--------------:|:-----------------------:|
-| `nonce`, `aud`, `iat`, `sd_hash` | Yes | — |
-| `delegate_payload` (references) | Yes | — |
-| `prompt_summary` (Autonomous only) | — | Yes |
-| Checkout mandate (full object) | — | Yes |
-| Payment mandate (full object) | — | Yes |
+| Claim                              | Always Visible | Selectively Disclosable |
+| ---------------------------------- | :------------: | :---------------------: |
+| `nonce`, `aud`, `iat`, `sd_hash`   |      Yes       |            —            |
+| `delegate_payload` (references)    |      Yes       |            —            |
+| `prompt_summary` (Autonomous only) |       —        |           Yes           |
+| Checkout mandate (full object)     |       —        |           Yes           |
+| Payment mandate (full object)      |       —        |           Yes           |
 
 Mandates are disclosed selectively — the checkout mandate is typically disclosed
 to the merchant, while the payment mandate is disclosed to the payment network.
 The `prompt_summary` provides a human-readable description of the user's intent.
 
+> **`aud` semantics in the chain**: L2 `aud` identifies the **agent** (the
+> party to which the user is delegating authority). L3a `aud` identifies the
+> **payment network** and L3b `aud` identifies the **merchant**. This mirrors
+> the flow of each credential: L2 is handed to the agent, which then produces
+> L3 credentials for network and merchant respectively.
+
 **Layer 2 — Autonomous Mode Nested Disclosures:**
 
-In Autonomous mode, individual merchants in the `mandate.checkout.allowed_merchant` constraint and
+In Autonomous mode, individual merchants in the `mandate.checkout.allowed_merchants` constraint and
 individual items in the `mandate.checkout.line_items` constraint are
 themselves selectively disclosable. Each entry is a separate disclosure,
 and the constraint references them by hash. This allows the
@@ -323,22 +329,22 @@ agent to disclose only the selected merchant or item to the verifier.
 
 **Layer 3a — Agent Payment KB-SD-JWT (Autonomous only, sent to network):**
 
-| Claim | Always Visible | Selectively Disclosable |
-|-------|:--------------:|:-----------------------:|
-| `nonce`, `aud`, `iat`, `sd_hash` | Yes | — |
-| `delegate_payload` (references) | Yes | — |
-| `header.kid` (agent key identifier) | Yes | — |
-| Final payment mandate | — | Yes |
-| Selected merchant | — | Yes |
+| Claim                               | Always Visible | Selectively Disclosable |
+| ----------------------------------- | :------------: | :---------------------: |
+| `nonce`, `aud`, `iat`, `sd_hash`    |      Yes       |            —            |
+| `delegate_payload` (references)     |      Yes       |            —            |
+| `header.kid` (agent key identifier) |      Yes       |            —            |
+| Final payment mandate               |       —        |           Yes           |
+| Selected merchant                   |       —        |           Yes           |
 
 **Layer 3b — Agent Checkout KB-SD-JWT (Autonomous only, sent to merchant):**
 
-| Claim | Always Visible | Selectively Disclosable |
-|-------|:--------------:|:-----------------------:|
-| `nonce`, `aud`, `iat`, `sd_hash` | Yes | — |
-| `delegate_payload` (references) | Yes | — |
-| `header.kid` (agent key identifier) | Yes | — |
-| Final checkout mandate | — | Yes |
+| Claim                               | Always Visible | Selectively Disclosable |
+| ----------------------------------- | :------------: | :---------------------: |
+| `nonce`, `aud`, `iat`, `sd_hash`    |      Yes       |            —            |
+| `delegate_payload` (references)     |      Yes       |            —            |
+| `header.kid` (agent key identifier) |      Yes       |            —            |
+| Final checkout mandate              |       —        |           Yes           |
 
 ### 4.3 Presentation Patterns
 
@@ -348,19 +354,23 @@ strategy for a standard purchase transaction:
 **Merchant presentation** (checkout verification):
 
 Disclose from L2 (or L3b in Autonomous mode):
+
 - Checkout mandate (product details, merchant-signed checkout JWT)
 - `prompt_summary` (optional — for audit trail)
 
 Do NOT disclose:
+
 - Payment mandate (payment credentials, amounts)
 
 **Payment network presentation** (payment authorization):
 
 Disclose from L2 (or L3a in Autonomous mode):
+
 - Payment mandate (payment credentials, amount, payee)
 - Selected merchant (in Autonomous mode, disclosed within L3a)
 
 Do NOT disclose:
+
 - Checkout mandate (specific product details)
 
 **Full-chain verification** (dispute resolution):
@@ -376,14 +386,14 @@ investigators.
 
 ### 5.1 Roles
 
-| Role | Trust Level | Responsibilities |
-|------|-------------|------------------|
-| **Issuer** | Trusted third party | Creates and signs L1 credentials; maintains user identity binding; provides JWKS endpoint for key discovery |
-| **Credential Provider** | Service provider | Hosts wallet infrastructure; stores L1 credentials; enables L2 construction |
-| **User** | Root of authority | Creates L2 mandates; defines all constraints and permissions; sole authority over the private key bound in L1 cnf.jwk |
-| **Agent** | Constrained delegate | Creates L3 mandates within L2 constraints; MUST NOT exceed delegated authority; key is bound by L2 `cnf` |
-| **Merchant** | Verifier | Creates signed checkout JWTs; verifies checkout mandate integrity; requests payment authorization |
-| **Payment Network** | Verifier + Arbiter | Verifies full credential chain; checks constraints; routes authorization request; maintains audit trail |
+| Role                    | Trust Level          | Responsibilities                                                                                                      |
+| ----------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Issuer**              | Trusted third party  | Creates and signs L1 credentials; maintains user identity binding; provides JWKS endpoint for key discovery           |
+| **Credential Provider** | Service provider     | Hosts wallet infrastructure; stores L1 credentials; enables L2 construction                                           |
+| **User**                | Root of authority    | Creates L2 mandates; defines all constraints and permissions; sole authority over the private key bound in L1 cnf.jwk |
+| **Agent**               | Constrained delegate | Creates L3 mandates within L2 constraints; MUST NOT exceed delegated authority; key is bound by L2 `cnf`              |
+| **Merchant**            | Verifier             | Creates signed checkout JWTs; verifies checkout mandate integrity; requests payment authorization                     |
+| **Payment Network**     | Verifier + Arbiter   | Verifies full credential chain; checks constraints; routes authorization request; maintains audit trail               |
 
 > **Note:** The Payment Network validates the VI credential chain as a pre-authorization step. The final authorization decision rests with the issuing institution.
 
@@ -412,11 +422,12 @@ investigators.
 ### 5.3 Verification Requirements Per Role
 
 **Merchant MUST:**
+
 - Verify L1 signature against the Credential Provider's published JWKS
 - Verify L2 signature against the key in L1 `cnf.jwk`
 - Verify `sd_hash` bindings between layers
 - Verify checkout mandate disclosure matches the submitted checkout
-- In Autonomous mode: resolve agent key from L2 `cnf.jwk` via L3b header `kid` match against L2 `cnf.kid`, then verify L3b signature
+- In Autonomous mode: resolve agent key from L2 `cnf.jwk` via L3b header `kid` match against L2 `cnf.jwk.kid`, then verify L3b signature
 - In Autonomous mode: verify L3b `typ` header is `kb-sd-jwt`
 
 > Note: In deployments where the merchant delegates credential verification to
@@ -424,21 +435,23 @@ investigators.
 > performing verification on the merchant's behalf.
 
 **Payment Network MUST:**
+
 - Verify L1 signature against the Credential Provider's published JWKS
 - Verify L2 signature against the key in L1 `cnf.jwk`
 - Verify `sd_hash` bindings between layers
 - Ensure a payment mandate disclosure is present and well-formed
 - In Autonomous mode: verify L2 `typ` header is `kb-sd-jwt+kb`
 - In Autonomous mode: verify L3a payment values satisfy disclosed L2 payment constraints
-- In Autonomous mode: resolve agent key from L2 `cnf.jwk` via L3a header `kid` match against L2 `cnf.kid`, then verify L3a signature
+- In Autonomous mode: resolve agent key from L2 `cnf.jwk` via L3a header `kid` match against L2 `cnf.jwk.kid`, then verify L3a signature
 - In Autonomous mode: verify L3a `typ` header is `kb-sd-jwt`
 - In Autonomous mode: enforce one-L3-per-mandate-pair and track cumulative L3 spend per L2 (see [security-model.md §4.2](security-model.md#42-cross-merchant-replay))
 - In Autonomous mode: verify cross-reference (`transaction_id` in L3a == `checkout_hash` in L3b) when both are available
 - Verify `checkout_hash` / `transaction_id` binding between checkout and payment mandates (when both are disclosed)
-- In Autonomous mode: verify `payment.reference` constraint — `conditional_transaction_id` matches the checkout mandate's `checkout_hash`
+- In Autonomous mode: verify `mandate.payment.reference` constraint — `conditional_transaction_id` matches the checkout mandate's `checkout_hash`
 - Verify credential expiration at all layers
 
 **Agent Platform SHOULD:**
+
 - Verify L1 and L2 integrity before using credentials
 - Verify constraint satisfaction before presenting L3 to merchant
 
@@ -448,17 +461,17 @@ investigators.
 
 VI is built on the following established standards and technologies:
 
-| Technology | Specification | Role in VI |
-|------------|--------------|------------|
-| **SD-JWT** | [RFC 9901] | Base credential format; provides selective disclosure of claims via salted hash commitments |
-| **JWS** | [RFC 7515] | Digital signature structure for all JWT layers |
-| **JWK** | [RFC 7517] | Public key representation in `cnf` claims and JWT headers |
-| **JWA** | [RFC 7518] | Algorithm identifiers (`ES256`) |
-| **JWT** | [RFC 7519] | Claim structure and processing rules |
-| **Confirmation Methods** | [RFC 7800] | `cnf` claim for key binding at each delegation layer |
-| **ES256** | [RFC 7518] §3.4 | ECDSA using P-256 and SHA-256; REQUIRED signing algorithm |
-| **SHA-256** | [FIPS 180-4] | Hash algorithm for disclosures, `sd_hash`, and `checkout_hash` |
-| **Base64url** | [RFC 4648] §5 | Encoding for signatures, disclosures, and hash values (no padding) |
+| Technology               | Specification   | Role in VI                                                                                  |
+| ------------------------ | --------------- | ------------------------------------------------------------------------------------------- |
+| **SD-JWT**               | [RFC 9901]      | Base credential format; provides selective disclosure of claims via salted hash commitments |
+| **JWS**                  | [RFC 7515]      | Digital signature structure for all JWT layers                                              |
+| **JWK**                  | [RFC 7517]      | Public key representation in `cnf` claims and JWT headers                                   |
+| **JWA**                  | [RFC 7518]      | Algorithm identifiers (`ES256`)                                                             |
+| **JWT**                  | [RFC 7519]      | Claim structure and processing rules                                                        |
+| **Confirmation Methods** | [RFC 7800]      | `cnf` claim for key binding at each delegation layer                                        |
+| **ES256**                | [RFC 7518] §3.4 | ECDSA using P-256 and SHA-256; REQUIRED signing algorithm                                   |
+| **SHA-256**              | [FIPS 180-4]    | Hash algorithm for disclosures, `sd_hash`, and `checkout_hash`                              |
+| **Base64url**            | [RFC 4648] §5   | Encoding for signatures, disclosures, and hash values (no padding)                          |
 
 ### Algorithm Requirements
 
@@ -608,7 +621,7 @@ authorization mechanism.
    user's device) creates a KB-SD-JWT (`typ: "kb-sd-jwt"`) containing:
    - A checkout mandate with the `checkout_jwt` and its
      `checkout_hash` (`B64U(SHA-256(ASCII(checkout_jwt)))`)
-   - A payment mandate with finalized payment values (`amount`, `currency`,
+   - A payment mandate with finalized payment values (`payment_amount`,
      `payee`, `payment_instrument`) and `transaction_id` set to the same
      `checkout_hash` value
    - An `sd_hash` binding this layer to the serialized L1
@@ -643,7 +656,7 @@ authorization mechanism.
    payment mandate disclosed. The network:
    - Verifies the L1 → L2 signature chain
    - Verifies `sd_hash` binding
-   - Extracts the payment mandate with finalized values (`amount`, `currency`,
+   - Extracts the payment mandate with finalized values (`payment_amount`,
      `payee`, `transaction_id`)
    - Verifies the `transaction_id` matches `checkout_hash` (when both mandates
      are available), binding the payment authorization to the specific checkout
@@ -664,6 +677,7 @@ Warehouse, assisted by an agent, using their Mastercard (ending 8842).
 - **Agent builds checkout**: The agent browses Tennis Warehouse on the user's
   behalf and adds the Babolat Pure Aero to the cart. Tennis Warehouse records
   the checkout session. The agent creates a `checkout_jwt`:
+
   ```
   checkout_jwt payload: {
     "merchant": {"id": "tw-001", "name": "Tennis Warehouse"},
@@ -675,11 +689,11 @@ Warehouse, assisted by an agent, using their Mastercard (ending 8842).
   ```
 
 - **L2**: The user reviews the cart, confirms, and signs L2 (`typ: kb-sd-jwt`):
-  - Checkout mandate: `vct=mandate.checkout`,
+  - Checkout mandate: `vct=mandate.checkout.1`,
     `checkout_jwt={agent-created JWT}`,
     `checkout_hash={SHA-256 of checkout_jwt}`
-  - Payment mandate: `vct=mandate.payment`,
-    `payment_instrument={card, ...}`, `currency=USD`, `amount=27999`,
+  - Payment mandate: `vct=mandate.payment.1`,
+    `payment_instrument={card, ...}`, `payment_amount={currency: USD, amount: 27999}`,
     `payee={Tennis Warehouse}`, `transaction_id={same hash}`
   - No `cnf` in mandates — no delegation
 
@@ -728,6 +742,7 @@ hash = B64U(SHA-256(ASCII(checkout_jwt)))
 ```
 
 Where:
+
 - `checkout_jwt` is the merchant-signed JWT string representing the checkout contents
 
 The checkout mandate carries this hash as `checkout_hash`; the payment mandate
@@ -737,6 +752,7 @@ the disclosed `checkout_jwt` and compares it to both values.
 ### 8.3 Cross-Reference Binding (Autonomous Mode)
 
 In Autonomous mode, the split L3 architecture produces two credentials:
+
 - L3a (payment) contains `transaction_id`
 - L3b (checkout) contains `checkout_hash`
 
@@ -744,7 +760,7 @@ These values MUST be equal: `L3a.transaction_id == L3b.checkout_hash`. This
 cross-reference ensures that the payment authorization and checkout fulfillment
 refer to the same transaction, even though they are presented to different parties.
 
-At the L2 level, the `payment.reference` constraint carries a
+At the L2 level, the `mandate.payment.reference` constraint carries a
 `conditional_transaction_id` that binds the payment mandate to the checkout
 mandate at delegation time, before the checkout JWT exists.
 
@@ -770,10 +786,10 @@ MUST:
 VI defines a set of registered constraint types (see
 [constraints.md](constraints.md)) using a dot-notation namespace:
 
-| Namespace | Purpose | Examples |
-|-----------|---------|---------|
-| `mandate.checkout.*` | Checkout-related constraints | `mandate.checkout.line_items`, `mandate.checkout.allowed_merchant` |
-| `payment.*` | Payment-related constraints | `payment.amount`, `payment.allowed_payee` |
+| Namespace            | Purpose                      | Examples                                                            |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `mandate.checkout.*` | Checkout-related constraints | `mandate.checkout.line_items`, `mandate.checkout.allowed_merchants` |
+| `mandate.payment.*`  | Payment-related constraints  | `mandate.payment.amount_range`, `mandate.payment.allowed_payees`    |
 
 Implementations MUST support all registered constraint types.
 
@@ -845,11 +861,11 @@ A conformant L2 construction implementation:
 4. In Immediate mode: mandates MUST contain final values and MUST NOT contain
    `cnf` claims.
 5. In Autonomous mode: mandates MUST contain `cnf.jwk` binding the agent's
-   public key and `cnf.kid` with the key identifier, and MUST contain at least one constraint.
+   public key and `cnf.jwk.kid` with the key identifier, and MUST contain at least one constraint.
 6. In Immediate mode: MUST compute the SHA-256 hash of `checkout_jwt` and
    include it as `checkout_hash` in the checkout mandate and as `transaction_id`
    in the payment mandate when both mandates are present.
-   In Autonomous mode: MUST include a `payment.reference` constraint with
+   In Autonomous mode: MUST include a `mandate.payment.reference` constraint with
    `conditional_transaction_id` in the payment mandate.
 
 > **Deployment note:** The user's private key may reside on-device (Secure
@@ -865,7 +881,7 @@ A conformant Agent implementation (Autonomous mode):
 1. MUST create two Layer 3 KB-SD-JWTs (L3a payment, L3b checkout) signed by
    the key bound in L2 mandate `cnf.jwk`.
 2. MUST set `typ` header to `kb-sd-jwt` in both L3a and L3b.
-3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.kid`. MUST NOT include a `jwk` parameter in L3 headers.
+3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.jwk.kid`. MUST NOT include a `jwk` parameter in L3 headers.
 4. MUST NOT include a `cnf` claim in L3 payloads (terminal delegation).
 5. MUST compute selective `sd_hash` for each L3, binding it to the L2 base JWT
    plus the relevant L2 disclosures (payment + merchant for L3a, checkout + item
@@ -892,17 +908,17 @@ A conformant Verifier implementation:
 6. MUST check credential expiration at all layers (RECOMMENDED clock skew
    tolerance: 300 seconds).
 7. In Autonomous mode: MUST resolve the agent's public key from L2 mandate
-   `cnf.jwk` by matching L3 header `kid` against L2 `cnf.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
+   `cnf.jwk` by matching L3 header `kid` against L2 `cnf.jwk.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
 8. In Autonomous mode: MUST verify L3 payloads do NOT contain `cnf` claims.
 9. When both checkout and payment mandates are disclosed: MUST verify `checkout_hash`
    (on checkout mandate) matches `transaction_id` (on payment mandate).
    In Autonomous mode, verify `transaction_id == checkout_hash` cross-reference.
 10. MUST check L3 values against **disclosed** L2 constraints. Machine-enforceable constraints (amount range, allowed payee, merchant, line items) MUST be verified; descriptive fields (product description, brand, color, size) are informational and not subject to automated verification.
 11. When receiving partial L2 disclosures: MUST still verify the structural
-   chain (signatures, `sd_hash`, key delegation). Content checks (checkout-payment
-   binding, constraint checking) apply only to disclosed mandates. At least one
-   mandate disclosure is REQUIRED in Autonomous mode to extract the agent
-   delegation key.
+    chain (signatures, `sd_hash`, key delegation). Content checks (checkout-payment
+    binding, constraint checking) apply only to disclosed mandates. At least one
+    mandate disclosure is REQUIRED in Autonomous mode to extract the agent
+    delegation key.
 
 ---
 
@@ -912,19 +928,19 @@ This section provides a brief overview of security considerations. For a
 comprehensive threat model and security analysis, see
 [security-model.md](security-model.md).
 
-| Threat | Mitigation |
-|--------|------------|
-| **Agent exceeds authority** | L2 constraints are cryptographically bound; L3 values are checked against **disclosed** L2 constraints at verification time |
-| **Credential replay** | `nonce` and `aud` claims prevent cross-context replay; short L3 lifetime (~5 min) limits replay window |
-| **Cross-merchant replay** | Each mandate pair is expected to produce exactly one L3a + L3b pair; payment networks MUST enforce by tracking L3 issuance per mandate pair and cumulative spend per L2 (see [security-model.md §4.2](security-model.md#42-cross-merchant-replay)) |
-| **Checkout-payment mismatch** | `checkout_hash` binding and `transaction_id` cross-reference ensure payment corresponds to specific checkout |
+| Threat                                   | Mitigation                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent exceeds authority**              | L2 constraints are cryptographically bound; L3 values are checked against **disclosed** L2 constraints at verification time                                                                                                                                                                 |
+| **Credential replay**                    | `nonce` and `aud` claims prevent cross-context replay; short L3 lifetime (~5 min) limits replay window                                                                                                                                                                                      |
+| **Cross-merchant replay**                | Each mandate pair is expected to produce exactly one L3a + L3b pair; payment networks MUST enforce by tracking L3 issuance per mandate pair and cumulative spend per L2 (see [security-model.md §4.2](security-model.md#42-cross-merchant-replay))                                          |
+| **Checkout-payment mismatch**            | `checkout_hash` binding and `transaction_id` cross-reference ensure payment corresponds to specific checkout                                                                                                                                                                                |
 | **Key compromise (Credential Provider)** | Key rotation via JWKS; short-lived L2/L3 limit blast radius; payment network retains independent transaction-level controls (card cancellation, fraud screening); VI-layer credential revocation deferred to future version (see [security-model.md §6.1](security-model.md#61-revocation)) |
-| **Key compromise (User)** | Secure Enclave/HSM protection (see [security-model.md §3.5](security-model.md#35-deployment-models)); L1 expiration limits exposure |
-| **Key compromise (Agent)** | L2 constraints limit damage; short L3 lifetime; agent key is bound to specific L2 — cannot be reused with different constraints |
-| **Disclosure correlation** | Random salts on each disclosure; different salts per issuance prevent cross-transaction correlation |
-| **L2 mandate tampering** | ES256 signature by the key bound in L1 `cnf.jwk`; any modification invalidates the signature |
-| **sd_hash manipulation** | sd_hash covers the L2 base JWT and relevant disclosures per L3 type; modification or inconsistency in the presented disclosure set is detected |
-| **Type confusion attacks** | Explicit `typ` header checking at each layer prevents attackers from presenting L3 as L2 or mismatching credential types |
+| **Key compromise (User)**                | Secure Enclave/HSM protection (see [security-model.md §3.5](security-model.md#35-deployment-models)); L1 expiration limits exposure                                                                                                                                                         |
+| **Key compromise (Agent)**               | L2 constraints limit damage; short L3 lifetime; agent key is bound to specific L2 — cannot be reused with different constraints                                                                                                                                                             |
+| **Disclosure correlation**               | Random salts on each disclosure; different salts per issuance prevent cross-transaction correlation                                                                                                                                                                                         |
+| **L2 mandate tampering**                 | ES256 signature by the key bound in L1 `cnf.jwk`; any modification invalidates the signature                                                                                                                                                                                                |
+| **sd_hash manipulation**                 | sd_hash covers the L2 base JWT and relevant disclosures per L3 type; modification or inconsistency in the presented disclosure set is detected                                                                                                                                              |
+| **Type confusion attacks**               | Explicit `typ` header checking at each layer prevents attackers from presenting L3 as L2 or mismatching credential types                                                                                                                                                                    |
 
 ---
 

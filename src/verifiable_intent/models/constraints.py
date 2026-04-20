@@ -21,45 +21,54 @@ class Constraint:
 
 @dataclass
 class AllowedMerchantConstraint(Constraint):
-    """Merchant allowlist in checkout mandate. allowed_merchants contains SD disclosure refs."""
+    """Merchant allowlist in checkout mandate. allowed contains SD disclosure refs."""
 
-    allowed_merchants: list[dict] = field(default_factory=list)
+    allowed: list[dict] = field(default_factory=list)
 
     def __post_init__(self):
-        self.type = "mandate.checkout.allowed_merchant"
+        self.type = "mandate.checkout.allowed_merchants"
 
     def to_dict(self) -> dict:
-        d = {"type": self.type, "allowed_merchants": self.allowed_merchants}
+        d = {"type": self.type, "allowed": self.allowed}
         d.update(self.extra_fields)
         return d
 
 
 @dataclass
 class CheckoutLineItemsConstraint(Constraint):
-    """Line items in checkout mandate. Each item has id, acceptable_items (SD refs), and quantity."""
+    """Line items in checkout mandate. Each item has id, acceptable_items (SD refs), and quantity.
+
+    match_mode controls how fulfillment line items are compared to the
+    constraint's item allowlist:
+      - "minimum" (default): fulfillment items must be within the constraint
+        (subset of allowed_ids and under per-item quantity caps).
+      - "exact": additionally requires every line-item requirement to be
+        fulfilled by at least one acceptable item with quantity > 0.
+    """
 
     items: list[dict] = field(default_factory=list)  # [{id, acceptable_items, quantity}, ...]
+    match_mode: str = "minimum"
 
     def __post_init__(self):
         self.type = "mandate.checkout.line_items"
 
     def to_dict(self) -> dict:
-        d: dict[str, Any] = {"type": self.type, "items": self.items}
+        d: dict[str, Any] = {"type": self.type, "items": self.items, "match_mode": self.match_mode}
         d.update(self.extra_fields)
         return d
 
 
 @dataclass
 class AllowedPayeeConstraint(Constraint):
-    """Payee allowlist in payment mandate. allowed_payees contains SD disclosure refs."""
+    """Payee allowlist in payment mandate. allowed contains SD disclosure refs."""
 
-    allowed_payees: list[dict] = field(default_factory=list)
+    allowed: list[dict] = field(default_factory=list)
 
     def __post_init__(self):
-        self.type = "payment.allowed_payee"
+        self.type = "mandate.payment.allowed_payees"
 
     def to_dict(self) -> dict:
-        d = {"type": self.type, "allowed_payees": self.allowed_payees}
+        d = {"type": self.type, "allowed": self.allowed}
         d.update(self.extra_fields)
         return d
 
@@ -73,7 +82,7 @@ class PaymentAmountConstraint(Constraint):
     max: int | None = None
 
     def __post_init__(self):
-        self.type = "payment.amount"
+        self.type = "mandate.payment.amount_range"
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"type": self.type, "currency": self.currency}
@@ -92,7 +101,7 @@ class ReferenceConstraint(Constraint):
     conditional_transaction_id: str = ""
 
     def __post_init__(self):
-        self.type = "payment.reference"
+        self.type = "mandate.payment.reference"
 
     def to_dict(self) -> dict:
         d = {
@@ -109,14 +118,19 @@ class PaymentBudgetConstraint(Constraint):
 
     currency: str = "USD"
     max: int = 0  # Cumulative cap in integer minor units
+    min: int | None = None  # Optional per-transaction floor in integer minor units
 
     def __post_init__(self):
-        self.type = "payment.budget"
+        self.type = "mandate.payment.budget"
         if self.max <= 0:
             raise ValueError("PaymentBudgetConstraint.max must be a positive integer")
+        if self.min is not None and self.min <= 0:
+            raise ValueError("PaymentBudgetConstraint.min must be a positive integer")
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"type": self.type, "currency": self.currency, "max": self.max}
+        if self.min is not None:
+            d["min"] = self.min
         d.update(self.extra_fields)
         return d
 
@@ -125,13 +139,15 @@ class PaymentBudgetConstraint(Constraint):
 class PaymentRecurrenceConstraint(Constraint):
     """Subscription setup terms for merchant-initiated recurring. Network-enforced."""
 
-    frequency: str = ""  # e.g. "MONTHLY", "ANNUALLY"
+    frequency: str = (
+        ""  # ISO 20022: "INDA", "DAIL", "WEEK", "TOWK", "TWMN", "MNTH", "TOMN", "QUTR", "FOMN", "SEMI", "YEAR", "TYEA"
+    )
     start_date: str = ""  # ISO 8601
     end_date: str | None = None  # ISO 8601, optional
     number: int | None = None  # Max occurrences, optional
 
     def __post_init__(self):
-        self.type = "payment.recurrence"
+        self.type = "mandate.payment.recurrence"
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {
@@ -151,13 +167,15 @@ class PaymentRecurrenceConstraint(Constraint):
 class AgentRecurrenceConstraint(Constraint):
     """Agent-managed recurring transaction terms. Network-enforced."""
 
-    frequency: str = ""  # e.g. "WEEKLY", "MONTHLY"
+    frequency: str = (
+        ""  # ISO 20022: "INDA", "DAIL", "WEEK", "TOWK", "TWMN", "MNTH", "TOMN", "QUTR", "FOMN", "SEMI", "YEAR", "TYEA"
+    )
     start_date: str = ""  # ISO 8601
     end_date: str = ""  # ISO 8601, required
     max_occurrences: int | None = None  # Optional cap
 
     def __post_init__(self):
-        self.type = "payment.agent_recurrence"
+        self.type = "mandate.payment.agent_recurrence"
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {
@@ -173,14 +191,14 @@ class AgentRecurrenceConstraint(Constraint):
 
 
 _REGISTRY: dict[str, type[Constraint]] = {
-    "mandate.checkout.allowed_merchant": AllowedMerchantConstraint,
+    "mandate.checkout.allowed_merchants": AllowedMerchantConstraint,
     "mandate.checkout.line_items": CheckoutLineItemsConstraint,
-    "payment.allowed_payee": AllowedPayeeConstraint,
-    "payment.amount": PaymentAmountConstraint,
-    "payment.reference": ReferenceConstraint,
-    "payment.budget": PaymentBudgetConstraint,
-    "payment.recurrence": PaymentRecurrenceConstraint,
-    "payment.agent_recurrence": AgentRecurrenceConstraint,
+    "mandate.payment.allowed_payees": AllowedPayeeConstraint,
+    "mandate.payment.amount_range": PaymentAmountConstraint,
+    "mandate.payment.reference": ReferenceConstraint,
+    "mandate.payment.budget": PaymentBudgetConstraint,
+    "mandate.payment.recurrence": PaymentRecurrenceConstraint,
+    "mandate.payment.agent_recurrence": AgentRecurrenceConstraint,
 }
 
 

@@ -18,11 +18,11 @@ class MandateMode(str, Enum):
 class CheckoutMandate:
     """Checkout mandate — either open (L2 autonomous) or final (L2 immediate).
 
-    Autonomous: cnf_jwk + constraints, vct = mandate.checkout.open
-    Immediate: checkout_jwt + checkout_hash with final values, vct = mandate.checkout
+    Autonomous: cnf_jwk + constraints, vct = mandate.checkout.open.1
+    Immediate: checkout_jwt + checkout_hash with final values, vct = mandate.checkout.1
     """
 
-    vct: str = "mandate.checkout.open"
+    vct: str = "mandate.checkout.open.1"
     # Autonomous mode: constraints + cnf for agent delegation
     cnf_jwk: dict | None = None
     cnf_kid: str | None = None  # Key identifier for agent key (autonomous mode)
@@ -38,10 +38,10 @@ class CheckoutMandate:
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"vct": self.vct}
         if self.cnf_jwk:
-            cnf: dict = {"jwk": self.cnf_jwk}
+            jwk = dict(self.cnf_jwk)
             if self.cnf_kid:
-                cnf["kid"] = self.cnf_kid
-            d["cnf"] = cnf
+                jwk["kid"] = self.cnf_kid
+            d["cnf"] = {"jwk": jwk}
         if self.constraints:
             d["constraints"] = [c.to_dict() for c in self.constraints]
         if self.checkout_jwt is not None:
@@ -55,11 +55,11 @@ class CheckoutMandate:
 class PaymentMandate:
     """Payment mandate — either open (L2 autonomous) or final (L2 immediate).
 
-    Autonomous: cnf_jwk + constraints + payment_instrument + risk_data, vct = mandate.payment.open
-    Immediate: currency + amount + payee + payment_instrument + transaction_id, vct = mandate.payment
+    Autonomous: cnf_jwk + constraints + payment_instrument + risk_data, vct = mandate.payment.open.1
+    Immediate: currency + amount + payee + payment_instrument + transaction_id, vct = mandate.payment.1
     """
 
-    vct: str = "mandate.payment.open"
+    vct: str = "mandate.payment.open.1"
     # Autonomous mode
     cnf_jwk: dict | None = None
     cnf_kid: str | None = None  # Key identifier for agent key (autonomous mode)
@@ -83,10 +83,10 @@ class PaymentMandate:
     def to_dict(self) -> dict:
         d: dict[str, Any] = {"vct": self.vct}
         if self.cnf_jwk:
-            cnf: dict = {"jwk": self.cnf_jwk}
+            jwk = dict(self.cnf_jwk)
             if self.cnf_kid:
-                cnf["kid"] = self.cnf_kid
-            d["cnf"] = cnf
+                jwk["kid"] = self.cnf_kid
+            d["cnf"] = {"jwk": jwk}
         if self.constraints:
             d["constraints"] = [c.to_dict() for c in self.constraints]
         if self.payment_instrument is not None:

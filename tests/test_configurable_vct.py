@@ -54,12 +54,12 @@ def _build_l1_l2(vct: str = _MC_VCT):
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],

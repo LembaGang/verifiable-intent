@@ -16,103 +16,109 @@ from verifiable_intent.verification.constraint_checker import (
 
 class TestPaymentBudgetConstraint:
     def test_round_trip(self):
-        c = PaymentBudgetConstraint(currency="USD", max=100000)
+        c = PaymentBudgetConstraint(currency="USD", min=1000, max=100000)
         d = c.to_dict()
-        assert d == {"type": "payment.budget", "currency": "USD", "max": 100000}
+        assert d == {"type": "mandate.payment.budget", "currency": "USD", "min": 1000, "max": 100000}
 
     def test_parse(self):
-        c = parse_constraint({"type": "payment.budget", "currency": "EUR", "max": 50000})
+        c = parse_constraint({"type": "mandate.payment.budget", "currency": "EUR", "min": 500, "max": 50000})
         assert isinstance(c, PaymentBudgetConstraint)
         assert c.currency == "EUR"
+        assert c.min == 500
         assert c.max == 50000
+
+    def test_round_trip_without_min(self):
+        c = PaymentBudgetConstraint(currency="USD", max=100000)
+        d = c.to_dict()
+        assert d == {"type": "mandate.payment.budget", "currency": "USD", "max": 100000}
 
     def test_recognized_permissive(self):
         """payment.budget is recognized (checked, not skipped) in PERMISSIVE mode."""
         result = check_constraints(
-            [{"type": "payment.budget", "currency": "USD", "max": 100000}],
+            [{"type": "mandate.payment.budget", "currency": "USD", "max": 100000}],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
             mode=StrictnessMode.PERMISSIVE,
         )
         assert result.satisfied
-        assert "payment.budget" in result.checked
-        assert "payment.budget" not in result.skipped
+        assert "mandate.payment.budget" in result.checked
+        assert "mandate.payment.budget" not in result.skipped
 
 
 class TestPaymentRecurrenceConstraint:
     def test_round_trip(self):
-        c = PaymentRecurrenceConstraint(frequency="MONTHLY", start_date="2026-01-01", end_date="2028-01-01", number=24)
+        c = PaymentRecurrenceConstraint(frequency="MNTH", start_date="2026-01-01", end_date="2028-01-01", number=24)
         d = c.to_dict()
         assert d == {
-            "type": "payment.recurrence",
-            "frequency": "MONTHLY",
+            "type": "mandate.payment.recurrence",
+            "frequency": "MNTH",
             "start_date": "2026-01-01",
             "end_date": "2028-01-01",
             "number": 24,
         }
 
     def test_round_trip_minimal(self):
-        c = PaymentRecurrenceConstraint(frequency="ANNUALLY", start_date="2026-06-01")
+        c = PaymentRecurrenceConstraint(frequency="YEAR", start_date="2026-06-01")
         d = c.to_dict()
-        assert d == {"type": "payment.recurrence", "frequency": "ANNUALLY", "start_date": "2026-06-01"}
+        assert d == {"type": "mandate.payment.recurrence", "frequency": "YEAR", "start_date": "2026-06-01"}
         assert "end_date" not in d
         assert "number" not in d
 
     def test_parse(self):
         c = parse_constraint(
-            {"type": "payment.recurrence", "frequency": "MONTHLY", "start_date": "2026-01-01", "number": 12}
+            {"type": "mandate.payment.recurrence", "frequency": "MNTH", "start_date": "2026-01-01", "number": 12}
         )
         assert isinstance(c, PaymentRecurrenceConstraint)
-        assert c.frequency == "MONTHLY"
+        assert c.frequency == "MNTH"
         assert c.number == 12
 
     def test_recognized_permissive(self):
         result = check_constraints(
-            [{"type": "payment.recurrence", "frequency": "MONTHLY", "start_date": "2026-01-01"}],
+            [{"type": "mandate.payment.recurrence", "frequency": "MNTH", "start_date": "2026-01-01"}],
             {},
             mode=StrictnessMode.PERMISSIVE,
         )
         assert result.satisfied
-        assert "payment.recurrence" in result.checked
+        assert "mandate.payment.recurrence" in result.checked
 
 
 class TestAgentRecurrenceConstraint:
     def test_round_trip(self):
         c = AgentRecurrenceConstraint(
-            frequency="WEEKLY", start_date="2026-03-01", end_date="2026-06-01", max_occurrences=12
+            frequency="WEEK", start_date="2026-03-01", end_date="2026-06-01", max_occurrences=12
         )
         d = c.to_dict()
         assert d == {
-            "type": "payment.agent_recurrence",
-            "frequency": "WEEKLY",
+            "type": "mandate.payment.agent_recurrence",
+            "frequency": "WEEK",
             "start_date": "2026-03-01",
             "end_date": "2026-06-01",
             "max_occurrences": 12,
         }
 
     def test_round_trip_no_max(self):
-        c = AgentRecurrenceConstraint(frequency="MONTHLY", start_date="2026-01-01", end_date="2027-01-01")
+        c = AgentRecurrenceConstraint(frequency="MNTH", start_date="2026-01-01", end_date="2027-01-01")
         d = c.to_dict()
         assert "max_occurrences" not in d
 
     def test_parse(self):
         c = parse_constraint(
             {
-                "type": "payment.agent_recurrence",
-                "frequency": "WEEKLY",
+                "type": "mandate.payment.agent_recurrence",
+                "frequency": "WEEK",
                 "start_date": "2026-03-01",
                 "end_date": "2026-06-01",
             }
         )
         assert isinstance(c, AgentRecurrenceConstraint)
-        assert c.frequency == "WEEKLY"
+        assert c.frequency == "WEEK"
         assert c.max_occurrences is None
 
     def test_recognized_permissive(self):
         result = check_constraints(
             [
                 {
-                    "type": "payment.agent_recurrence",
-                    "frequency": "WEEKLY",
+                    "type": "mandate.payment.agent_recurrence",
+                    "frequency": "WEEK",
                     "start_date": "2026-03-01",
                     "end_date": "2026-06-01",
                 }
@@ -121,7 +127,7 @@ class TestAgentRecurrenceConstraint:
             mode=StrictnessMode.PERMISSIVE,
         )
         assert result.satisfied
-        assert "payment.agent_recurrence" in result.checked
+        assert "mandate.payment.agent_recurrence" in result.checked
 
 
 class TestNewConstraintsWithOtherConstraints:
@@ -129,21 +135,21 @@ class TestNewConstraintsWithOtherConstraints:
         """New network-enforced constraints work alongside existing local constraints."""
         result = check_constraints(
             [
-                {"type": "payment.amount", "currency": "USD", "max": 40000},
-                {"type": "payment.budget", "currency": "USD", "max": 100000},
-                {"type": "payment.recurrence", "frequency": "MONTHLY", "start_date": "2026-01-01"},
+                {"type": "mandate.payment.amount_range", "currency": "USD", "max": 40000},
+                {"type": "mandate.payment.budget", "currency": "USD", "max": 100000},
+                {"type": "mandate.payment.recurrence", "frequency": "MNTH", "start_date": "2026-01-01"},
             ],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
             mode=StrictnessMode.STRICT,
         )
         assert result.satisfied
-        assert "payment.amount" in result.checked
-        assert "payment.budget" in result.checked
-        assert "payment.recurrence" in result.checked
+        assert "mandate.payment.amount_range" in result.checked
+        assert "mandate.payment.budget" in result.checked
+        assert "mandate.payment.recurrence" in result.checked
 
 
 class TestPaymentBudgetConstraintValidation:
-    """7F: PaymentBudgetConstraint rejects zero/negative max."""
+    """7F: PaymentBudgetConstraint rejects non-positive min/max values."""
 
     def test_budget_zero_max_raises(self):
         with pytest.raises(ValueError, match="must be a positive integer"):
@@ -152,6 +158,14 @@ class TestPaymentBudgetConstraintValidation:
     def test_budget_negative_max_raises(self):
         with pytest.raises(ValueError, match="must be a positive integer"):
             PaymentBudgetConstraint(currency="USD", max=-100)
+
+    def test_budget_zero_min_raises(self):
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            PaymentBudgetConstraint(currency="USD", min=0, max=100)
+
+    def test_budget_negative_min_raises(self):
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            PaymentBudgetConstraint(currency="USD", min=-1, max=100)
 
 
 class TestL2SdArrayContainsMandateHashes:
@@ -275,18 +289,18 @@ class TestL2SdArrayContainsMandateHashes:
             mode=MandateMode.AUTONOMOUS,
             sd_hash=hash_bytes(l1.serialize().encode("ascii")),
             checkout_mandate=CheckoutMandate(
-                vct="mandate.checkout.open",
+                vct="mandate.checkout.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 constraints=[
-                    AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                    AllowedMerchantConstraint(allowed=MERCHANTS),
                     CheckoutLineItemsConstraint(
                         items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
                     ),
                 ],
             ),
             payment_mandate=PaymentMandate(
-                vct="mandate.payment.open",
+                vct="mandate.payment.open.1",
                 cnf_jwk=agent.public_jwk,
                 cnf_kid="agent-key-1",
                 payment_instrument=PAYMENT_INSTRUMENT,
