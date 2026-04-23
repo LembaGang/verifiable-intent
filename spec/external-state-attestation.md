@@ -109,9 +109,9 @@ mandate.
 `environment.market_state` MAY appear in **both** VI Autonomous mode mandate
 types:
 
-- **Checkout mandate** (`vct: "mandate.checkout.open"`): Prevents checkout
+- **Checkout mandate** (`vct: "mandate.checkout.open.1"`): Prevents checkout
   initiation during market closure or halt. Typical `expected_status`: `"OPEN"`.
-- **Payment mandate** (`vct: "mandate.payment.open"`): Prevents payment
+- **Payment mandate** (`vct: "mandate.payment.open.1"`): Prevents payment
   authorisation outside valid trading sessions. Typical `expected_status`: `"OPEN"`.
 
 When present in both mandates of a single delegated action, both constraints
@@ -231,8 +231,8 @@ constraint to be treated as violated. The agent MUST NOT proceed on uncertainty.
 
 ### Appears In
 
-- Checkout mandate (`mandate.checkout.open`) `constraints` array
-- Payment mandate (`mandate.payment.open`) `constraints` array
+- Checkout mandate (`mandate.checkout.open.1`) `constraints` array
+- Payment mandate (`mandate.payment.open.1`) `constraints` array
 
 ### Schema
 
@@ -463,7 +463,7 @@ mandate, both MUST be satisfied before L3:
 
 ```json
 {
-  "vct": "mandate.checkout.open",
+  "vct": "mandate.checkout.open.1",
   "constraints": [
     {
       "type": "environment.market_state",
@@ -492,8 +492,8 @@ mandate, both MUST be satisfied before L3:
       }
     },
     {
-      "type": "mandate.checkout.allowed_merchant",
-      "allowed_merchants": [
+      "type": "mandate.checkout.allowed_merchants",
+      "allowed": [
         { "name": "Alpaca Markets", "website": "https://alpaca.markets" }
       ]
     }
@@ -511,7 +511,7 @@ Multi-exchange example — both NYSE and LSE must be OPEN (two
 
 ```json
 {
-  "vct": "mandate.checkout.open",
+  "vct": "mandate.checkout.open.1",
   "constraints": [
     {
       "type": "environment.market_state",
@@ -528,8 +528,8 @@ Multi-exchange example — both NYSE and LSE must be OPEN (two
       "max_attestation_age": 60
     },
     {
-      "type": "mandate.checkout.allowed_merchant",
-      "allowed_merchants": [
+      "type": "mandate.checkout.allowed_merchants",
+      "allowed": [
         { "name": "Alpaca Markets", "website": "https://alpaca.markets" }
       ]
     }
@@ -720,7 +720,7 @@ evaluated `environment.market_state` constraint:
 
 **Mixed pass/fail.** When one `environment.*` constraint passes and another fails in the same mandate — for example, `environment.market_state` returns `OPEN` for the primary exchange while a second `environment.market_state` returns `CLOSED` for a secondary exchange, or `environment.market_state` returns `OPEN` while `environment.wallet_state` returns `pass: false` — the family's gate fails. The passing member does not rescue the failing member.
 
-**L3 execution gate and completeness.** Verifiers MUST evaluate every `environment.*` constraint in the mandate to completion before refusing Layer 3, even after the first failure has been observed. The completeness requirement applies to the verifier-side L3-acceptance evaluation path; agent-side pre-L3-creation evaluation is governed by §5.2's short-circuit clause, which requires agents to stop at the first `environment.*` failure as a fail-closed agent-side halt distinct from the verifier's diagnostic-completeness obligation. The `violations` list MUST contain one entry per failed `environment.*` constraint regardless of which member failed first. Short-circuit evaluation of `environment.*` constraints is non-conforming because it denies downstream consumers the per-member evidence the gate depends on. Transactional constraint evaluation (`mandate.*`, `payment.*`) after a confirmed `environment.*` failure remains implementation-defined (verifiers MAY evaluate for diagnostic completeness, MAY skip for efficiency) as long as L3 refusal is unambiguous. This composes with §5.2's ordering requirement — environment-before-transactional stays; the completeness rule layers on top.
+**L3 execution gate and completeness.** Verifiers MUST evaluate every `environment.*` constraint in the mandate to completion before refusing Layer 3, even after the first failure has been observed. The completeness requirement applies to the verifier-side L3-acceptance evaluation path; agent-side pre-L3-creation evaluation is governed by §5.2's short-circuit clause, which requires agents to stop at the first `environment.*` failure as a fail-closed agent-side halt distinct from the verifier's diagnostic-completeness obligation. The `violations` list MUST contain one entry per failed `environment.*` constraint regardless of which member failed first. Short-circuit evaluation of `environment.*` constraints is non-conforming because it denies downstream consumers the per-member evidence the gate depends on. Transactional constraint evaluation (`mandate.*`) after a confirmed `environment.*` failure remains implementation-defined (verifiers MAY evaluate for diagnostic completeness, MAY skip for efficiency) as long as L3 refusal is unambiguous. This composes with §5.2's ordering requirement — environment-before-transactional stays; the completeness rule layers on top.
 
 **Per-member diagnostic output.** Each failed `environment.*` constraint MUST produce its own entry in the `violations` list. Each violation entry MUST carry two identifiers: the array index of the constraint in the mandate's `constraints[]` array as the primary machine identifier (unambiguous across any combination of constraint types and repeats), and a human-readable identifier derived from the constraint's distinguishing field. Selection of the distinguishing field is a per-type obligation declared by each constraint type specification, analogous to the per-type declaration of MUST-implement algorithms in §4.7. For `environment.market_state`, the distinguishing field is the MIC — taken from the signed attestation's `mic` field when present per §4.1, falling back to the constraint's attestation-URL parse. For `environment.wallet_state`, the distinguishing field is `subject_wallet` (REQUIRED per that spec's §4 schema, always present). Verifiers MUST NOT collapse multiple `environment.*` failures into a single generic violation. This preserves the diagnostic signal needed for post-hoc analysis and dispute resolution, and disambiguates cases where multiple constraints of the same type appear in a single mandate — the §4.5 multi-exchange example (two `environment.market_state` constraints, XNYS and XLON) is the driving case.
 
