@@ -51,9 +51,9 @@ The Issuer (a financial institution or payment network) creates and signs a veri
 
 ### 2.2 Layer 2 — User to Agent
 
-The user creates a KB-SD-JWT or KB-SD-JWT+KB containing mandates with constraints (Autonomous mode) or final values (Immediate mode). In Autonomous mode, the checkout mandate and payment mandate each include `cnf.kid` and `cnf.jwk` binding the agent's public key, delegating authority to act within specified limits.
+The user creates a KB-SD-JWT or KB-SD-JWT+KB containing mandates with constraints (Autonomous mode) or final values (Immediate mode). In Autonomous mode, the checkout mandate and payment mandate each include `cnf.jwk` (with an embedded `kid`) binding the agent's public key, delegating authority to act within specified limits.
 
-**What the user controls**: Which agent key is authorized, what products may be purchased (`mandate.checkout.line_items`), spending limits (`payment.amount`, `payment.budget`), allowed merchants (`mandate.checkout.allowed_merchant`, `payment.allowed_payee`), recurrence terms (`payment.recurrence`, `payment.agent_recurrence`), and all other constraint types defined in [constraints.md](constraints.md) §4.
+**What the user controls**: Which agent key is authorized, what products may be purchased (`mandate.checkout.line_items`), spending limits (`mandate.payment.amount_range`, `mandate.payment.budget`), allowed merchants (`mandate.checkout.allowed_merchants`, `mandate.payment.allowed_payees`), recurrence terms (`mandate.payment.recurrence`, `mandate.payment.agent_recurrence`), and all other constraint types defined in [constraints.md](constraints.md) §4.
 
 **Compromise impact**: A compromised user key allows creation of arbitrary L2 mandates — any agent could be delegated any authority, up to the limits of the L1 credential. The attacker effectively becomes the user.
 
@@ -63,7 +63,7 @@ The user creates a KB-SD-JWT or KB-SD-JWT+KB containing mandates with constraint
 
 The agent creates KB-SD-JWTs (L3a and L3b) proving it holds the key delegated in L2 and presenting the fulfillment details (specific checkout and payment parameters).
 
-**What the agent controls**: Product selection (within `mandate.checkout.line_items` constraints), timing of purchase, which merchant to approach (within `mandate.checkout.allowed_merchant` / `payment.allowed_payee` constraints).
+**What the agent controls**: Product selection (within `mandate.checkout.line_items` constraints), timing of purchase, which merchant to approach (within `mandate.checkout.allowed_merchants` / `mandate.payment.allowed_payees` constraints).
 
 **Compromise impact**: A compromised agent key allows the attacker to create L3 credentials within the constraints of the existing L2. The attacker cannot exceed the delegated authority.
 
@@ -137,7 +137,7 @@ VI binds an agent key via the L2 mandate's `cnf.jwk` but does not specify how th
 - The agent's public key SHOULD be communicated to the user's L2 construction system through an authenticated channel (e.g., a signed agent platform manifest).
 - Agent platforms SHOULD generate fresh key pairs per delegation session to limit the impact of key compromise. The reference implementation uses fixed deterministic keys suitable only for testing.
 
-> **Terminal delegation**: L3 credentials MUST NOT contain a `cnf` claim in the payload. The agent proves key possession via the header `kid` parameter, which verifiers resolve against L2 `cnf.kid` and `cnf.jwk`. This prevents agents from sub-delegating authority to unauthorized third parties — the delegation chain terminates at L3.
+> **Terminal delegation**: L3 credentials MUST NOT contain a `cnf` claim in the payload. The agent proves key possession via the header `kid` parameter, which verifiers resolve against L2 `cnf.jwk` (matching against the embedded `kid`). This prevents agents from sub-delegating authority to unauthorized third parties — the delegation chain terminates at L3.
 
 ### 3.4 User Key Management
 
@@ -176,7 +176,7 @@ This section describes attacks that implementers should understand and test agai
 
 ### 4.2 Cross-Merchant Replay and Budget Enforcement
 
-**Attack**: In the base model, each L2 mandate pair (checkout + payment) is expected to produce exactly one L3a + L3b pair (see [credential-format.md](credential-format.md) §8.2). When `payment.agent_recurrence` is present, multiple L3 pairs are explicitly authorized within bounds. However, without stateful tracking, a compromised agent could generate excessive L3 pairs, either violating the one-per-pair rule (base model) or exceeding the bounds (multi-transaction model).
+**Attack**: In the base model, each L2 mandate pair (checkout + payment) is expected to produce exactly one L3a + L3b pair (see [credential-format.md](credential-format.md) §8.2). When `mandate.payment.agent_recurrence` is present, multiple L3 pairs are explicitly authorized within bounds. However, without stateful tracking, a compromised agent could generate excessive L3 pairs, either violating the one-per-pair rule (base model) or exceeding the bounds (multi-transaction model).
 
 **Why per-L3 defenses are insufficient**:
 
@@ -186,7 +186,7 @@ This section describes attacks that implementers should understand and test agai
 | `aud` binding | The agent controls the L3 `aud` value; it is not constrained by L2 |
 | Short L3 lifetime | Limits the replay window for a single L3 but not sequential generation of new ones |
 | `sd_hash` binding | Prevents L2 substitution, not creation of multiple L3s referencing the same L2 |
-| `payment.amount` | Checked per-L3, not accumulated across L3s from the same mandate pair |
+| `mandate.payment.amount_range` | Checked per-L3, not accumulated across L3s from the same mandate pair |
 
 **Defense**: Transaction count and budget enforcement cannot be done cryptographically within VI alone — they require stateful tracking by the payment network.
 
@@ -196,13 +196,13 @@ Payment networks MUST track L3a issuance and cumulative spend against each L2 ma
 
 1. Look up the L2 (by `sd_hash`) in its transaction log.
 2. Determine the transaction model:
-   - **Base model** (no `payment.agent_recurrence`): Verify the mandate pair has not been fulfilled. Reject if already used.
-   - **Multi-transaction model** (`payment.agent_recurrence` present): Check occurrence count and cumulative budget.
+   - **Base model** (no `mandate.payment.agent_recurrence`): Verify the mandate pair has not been fulfilled. Reject if already used.
+   - **Multi-transaction model** (`mandate.payment.agent_recurrence` present): Check occurrence count and cumulative budget.
 3. For multi-transaction mandates, extract and enforce:
-   - `payment.agent_recurrence.max_occurrences` (if present): Reject if occurrence count would exceed this
-   - `payment.budget.max`: Reject if `prior_total + this_L3a.amount > budget.max`
+   - `mandate.payment.agent_recurrence.max_occurrences` (if present): Reject if occurrence count would exceed this
+   - `mandate.payment.budget.max`: Reject if `prior_total + this_L3a.amount > budget.max`
    - Date range (`start_date` to `end_date`): Reject if current date outside range
-4. Verify per-transaction `payment.amount` constraint: `min <= this_L3a.amount <= max`
+4. Verify per-transaction `mandate.payment.amount_range` constraint: `min <= this_L3a.amount <= max`
 5. Record the authorized amount and increment occurrence count.
 
 > **Note**: This requirement applies only to Autonomous mode, where L3 credentials are generated by an agent without real-time user confirmation. In Immediate mode, the user directly confirms each transaction, providing a natural transaction-count bound.
@@ -285,15 +285,15 @@ A concrete list of security-relevant implementation requirements. Use this as a 
 - [ ] For production verification, always supply the Issuer public key (or JWKS-resolved key) so L1 signature verification is enforced. Signature-skip modes are test-only.
 - [ ] Check `exp` and `iat` at every layer with consistent clock skew tolerance.
 - [ ] Verify `sd_hash` binds each layer to its parent ([credential-format.md](credential-format.md) §6.1).
-- [ ] Verify `cnf` chain: L1 binds user key, L2 checkout and payment mandates bind agent key via `cnf.kid` + `cnf.jwk` (Autonomous). L3 header `kid` matches L2 `cnf.kid`; verifiers resolve the agent's public key from L2 `cnf.jwk`.
-- [ ] Verify `cnf` is identical across all L2 mandates (checkout and payment): both `cnf.kid` and `cnf.jwk` must match. Reject if they differ (split-agent attack — see §4.9, [credential-format.md](credential-format.md) §4.6).
+- [ ] Verify `cnf` chain: L1 binds user key, L2 checkout and payment mandates bind agent key via `cnf.jwk` with embedded `kid` (Autonomous). L3 header `kid` matches L2 `cnf.jwk.kid`; verifiers resolve the agent's public key from L2 `cnf.jwk`.
+- [ ] Verify `cnf` is identical across all L2 mandates (checkout and payment): `cnf.jwk` (including its embedded `kid`) must match. Reject if they differ (split-agent attack — see §4.9, [credential-format.md](credential-format.md) §4.6).
 - [ ] Identify mandates by `vct`, never by position in `delegate_payload`.
 - [ ] Verify `checkout_hash` (on checkout mandate) and `transaction_id` (on payment mandate) when both mandates are disclosed ([credential-format.md](credential-format.md) §6.2). In Autonomous mode, verify `transaction_id == checkout_hash` cross-reference between L3a and L3b.
 - [ ] Check L2 constraints against L3 fulfillment values using the validation algorithm in [constraints.md](constraints.md) §5.
 - [ ] Implement nonce deduplication with a sliding window at least as long as the maximum L3 lifetime plus clock skew tolerance.
 - [ ] Enforce transaction model rules (see §4.2):
   - **Base model**: Track fulfilled mandate pairs per L2; reject duplicate L3s for the same pair
-  - **Multi-transaction model** (`payment.agent_recurrence` present): Track occurrence count, cumulative spend, and date range; enforce `max_occurrences`, `payment.budget.max`, and temporal bounds
+  - **Multi-transaction model** (`mandate.payment.agent_recurrence` present): Track occurrence count, cumulative spend, and date range; enforce `max_occurrences`, `mandate.payment.budget.max`, and temporal bounds
 
 ### 5.3 Key Management Requirements
 
@@ -306,7 +306,7 @@ A concrete list of security-relevant implementation requirements. Use this as a 
 
 - [ ] Compute `checkout_hash` / `transaction_id` as `B64U(SHA-256(ASCII(checkout_jwt)))` — a simple SHA-256 of the checkout JWT string. No JCS canonicalization or salt is required. Checkout mandates carry this value as `checkout_hash`; payment mandates carry it as `transaction_id`.
 - [ ] In Autonomous mode, verify that L3a `transaction_id` equals L3b `checkout_hash` — this cross-reference binds the split L3 credentials to the same transaction.
-- [ ] Verify `conditional_transaction_id` in L2 `payment.reference` constraint matches the hash of the checkout disclosure string.
+- [ ] Verify `conditional_transaction_id` in L2 `mandate.payment.reference` constraint matches the hash of the checkout disclosure string.
 
 ---
 
@@ -344,9 +344,9 @@ VI verifies that an agent operated *within* its constraints. It does not verify 
 
 ### 6.4 Open-Ended Recurrence
 
-The `payment.recurrence` and `payment.agent_recurrence` constraints define recurring payment terms. For `payment.recurrence` (merchant-managed subscriptions), a constraint with `frequency` but no `end_date` or `number` authorizes indefinite recurring charges. For `payment.agent_recurrence` (agent-managed recurring purchases), the `end_date` field is REQUIRED, preventing open-ended authorization.
+The `mandate.payment.recurrence` and `mandate.payment.agent_recurrence` constraints define recurring payment terms. For `mandate.payment.recurrence` (merchant-managed subscriptions), a constraint with `frequency` but no `end_date` or `number` authorizes indefinite recurring charges. For `mandate.payment.agent_recurrence` (agent-managed recurring purchases), the `end_date` field is REQUIRED, preventing open-ended authorization.
 
-L2 construction implementations SHOULD set explicit bounds (`end_date` and/or `number`) on `payment.recurrence` constraints to prevent indefinite subscriptions. Verifiers SHOULD warn when these fields are absent, but v0.1 does not enforce this as a hard requirement.
+L2 construction implementations SHOULD set explicit bounds (`end_date` and/or `number`) on `mandate.payment.recurrence` constraints to prevent indefinite subscriptions. Verifiers SHOULD warn when these fields are absent, but v0.1 does not enforce this as a hard requirement.
 
 ### 6.5 PERMISSIVE Mode Default
 
@@ -368,7 +368,7 @@ factors guide lifetime selection:
 
 2. **Use-case-appropriate duration.** One-time delegated purchases (e.g., "buy
    this racket") warrant 24–72 hours. Price-watching agents monitoring deals
-   may need up to 30 days. Subscription setup (`payment.recurrence`) should
+   may need up to 30 days. Subscription setup (`mandate.payment.recurrence`) should
    match the billing cycle. Implementations SHOULD document their default
    lifetime and the rationale.
 

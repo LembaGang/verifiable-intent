@@ -76,12 +76,12 @@ def _make_immediate_l2(l1_ser, now=None):
     checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
     c_hash = checkout_hash_from_jwt(checkout_jwt)
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],
@@ -131,7 +131,7 @@ class TestNonObjectPayloads:
 
 
 class TestL3HeaderKidBinding:
-    """L3 header kid must be a string matching L2 cnf.kid."""
+    """L3 header kid must be a string matching L2 cnf.jwk.kid."""
 
     def test_l3_header_kid_non_string_rejected(self):
         """Non-string kid in L3 header should fail with error, not crash.
@@ -148,18 +148,18 @@ class TestL3HeaderKidBinding:
         l1_ser = l1.serialize()
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -180,7 +180,7 @@ class TestL3HeaderKidBinding:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == MERCHANTS[0]["name"])
 
         final_payment = FinalPaymentMandate(
@@ -236,7 +236,7 @@ class TestNonDictConstraintEntries:
 
     def test_mixed_valid_and_invalid_entries(self):
         result = check_constraints(
-            [42, {"type": "payment.amount", "currency": "USD", "min": 100, "max": 500}],
+            [42, {"type": "mandate.payment.amount_range", "currency": "USD", "min": 100, "max": 500}],
             {"payment_amount": {"amount": 200, "currency": "USD"}},
         )
         assert not result.satisfied  # The int entry causes failure
@@ -298,7 +298,7 @@ class TestImmediateMandatePairConformance:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout",
+            vct="mandate.checkout.1",
             checkout_jwt=checkout_jwt,
             checkout_hash=c_hash,
         )
@@ -335,18 +335,18 @@ class TestImmediateRejectsOpenMandates:
 
         # Create an open checkout mandate (autonomous style) but in immediate mode L2
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment",
+            vct="mandate.payment.1",
             currency="USD",
             amount=27999,
             payee=MERCHANTS[0],
@@ -411,7 +411,7 @@ class TestMalformedFulfillmentShapes:
 
     def test_string_payee(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": "invalid-string", "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -419,7 +419,7 @@ class TestMalformedFulfillmentShapes:
 
     def test_int_payee(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": 123, "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -427,7 +427,7 @@ class TestMalformedFulfillmentShapes:
     def test_list_merchant(self):
         """List merchant fails closed (not a valid dict)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": [{"id": "m1"}], "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -436,7 +436,7 @@ class TestMalformedFulfillmentShapes:
     def test_int_merchant(self):
         """Integer merchant fails closed (not a valid dict)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": 123, "allowed_merchants": [{"id": "m1", "name": "M"}]},
         )
         assert not result.satisfied
@@ -467,12 +467,12 @@ class TestImmediateRejectsCnf:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout",
+            vct="mandate.checkout.1",
             checkout_jwt=checkout_jwt,
             checkout_hash=c_hash,
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment",
+            vct="mandate.payment.1",
             currency="USD",
             amount=27999,
             payee=MERCHANTS[0],
@@ -495,7 +495,7 @@ class TestImmediateRejectsCnf:
         # We need to find the payment mandate disclosure value and inject cnf into it
         for i, disc_val in enumerate(l2.disclosure_values):
             value = disc_val[-1] if disc_val else None
-            if isinstance(value, dict) and value.get("vct") == "mandate.payment":
+            if isinstance(value, dict) and value.get("vct") == "mandate.payment.1":
                 value["cnf"] = {"jwk": agent.public_jwk}
                 break
 
@@ -525,18 +525,18 @@ class TestL3PaymentInstrumentSubstitution:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -557,7 +557,7 @@ class TestL3PaymentInstrumentSubstitution:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == MERCHANTS[0]["name"])
 
         # L3a with UNAUTHORIZED payment instrument
@@ -606,18 +606,18 @@ class TestL3PaymentInstrumentSubstitution:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -638,9 +638,11 @@ class TestL3PaymentInstrumentSubstitution:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == MERCHANTS[0]["name"])
-        checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+        checkout_disc = _find_disclosure(
+            l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1"
+        )
         item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == ACCEPTABLE_ITEMS[0]["id"])
 
         # L3a with correct payment instrument
@@ -709,18 +711,18 @@ class TestAutonomousInstrumentMismatch:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -741,7 +743,7 @@ class TestAutonomousInstrumentMismatch:
         l2_ser = l2.serialize()
         l2_base_jwt = l2_ser.split("~")[0]
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == MERCHANTS[0]["name"])
 
         # L3a with UNAUTHORIZED payment instrument (different ID)
@@ -792,18 +794,18 @@ class TestDuplicateMandateSmuggling:
         l1_ser = l1.serialize()
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -826,7 +828,7 @@ class TestDuplicateMandateSmuggling:
         checkout_ref_hash = None
         for ds, dv in zip(l2.disclosures, l2.disclosure_values):
             val = dv[-1] if dv else None
-            if isinstance(val, dict) and val.get("vct") == "mandate.checkout.open":
+            if isinstance(val, dict) and val.get("vct") == "mandate.checkout.open.1":
                 checkout_ref_hash = hash_disclosure(ds)
                 break
         assert checkout_ref_hash is not None
@@ -858,18 +860,18 @@ class TestDuplicateMandateSmuggling:
         l1_ser = l1.serialize()
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
-                AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+                AllowedMerchantConstraint(allowed=MERCHANTS),
                 CheckoutLineItemsConstraint(
                     items=[{"id": "li-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
                 ),
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -892,7 +894,7 @@ class TestDuplicateMandateSmuggling:
         payment_ref_hash = None
         for ds, dv in zip(l2.disclosures, l2.disclosure_values):
             val = dv[-1] if dv else None
-            if isinstance(val, dict) and val.get("vct") == "mandate.payment.open":
+            if isinstance(val, dict) and val.get("vct") == "mandate.payment.open.1":
                 payment_ref_hash = hash_disclosure(ds)
                 break
         assert payment_ref_hash is not None
@@ -931,12 +933,12 @@ class TestEmptyCnfBypass:
         c_hash = checkout_hash_from_jwt(checkout_jwt)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout",
+            vct="mandate.checkout.1",
             checkout_jwt=checkout_jwt,
             checkout_hash=c_hash,
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment",
+            vct="mandate.payment.1",
             currency="USD",
             amount=27999,
             payee=MERCHANTS[0],
@@ -958,7 +960,7 @@ class TestEmptyCnfBypass:
         # Inject empty cnf into payment mandate (simulate externally-constructed credential)
         for i, disc_val in enumerate(l2.disclosure_values):
             value = disc_val[-1] if disc_val else None
-            if isinstance(value, dict) and value.get("vct") == "mandate.payment":
+            if isinstance(value, dict) and value.get("vct") == "mandate.payment.1":
                 value["cnf"] = {}
                 break
 
@@ -975,7 +977,7 @@ class TestNonListAllowedMerchants:
 
     def test_allowed_payee_nonlist_allowed_merchants(self):
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "M"}]}],
             {"payee": {"id": "m1", "name": "M"}, "allowed_merchants": "not-a-list"},
         )
         # Should not crash — falls through to inline constraint check
@@ -983,7 +985,7 @@ class TestNonListAllowedMerchants:
 
     def test_allowed_merchant_nonlist_allowed_merchants(self):
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "M"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "M"}]}],
             {"merchant": {"id": "m1", "name": "M"}, "allowed_merchants": 42},
         )
         # Should not crash — falls through to inline constraint check

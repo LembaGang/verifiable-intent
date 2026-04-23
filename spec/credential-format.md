@@ -36,22 +36,22 @@ when, and only when, they appear in ALL CAPITALS, as shown here.
 VI uses three credential layers, each building on the previous through
 cryptographic key binding:
 
-| Layer | Type | Signed By | Lifetime | Purpose |
-|-------|------|-----------|----------|---------|
-| L1 | SD-JWT (`sd+jwt`) | Issuer | ~1 year | Binds user identity and public key |
-| L2 Immediate | KB-SD-JWT (`kb-sd-jwt`) | User Public Key | ~15 minutes | Final transaction values |
-| L2 Autonomous | KB-SD-JWT+KB (`kb-sd-jwt+kb`) | User Public Key | 24 hours – 30 days | Constraints + agent key binding |
-| L3a | KB-SD-JWT (`kb-sd-jwt`) | Agent Key | ~5 minutes | Final payment values for network |
-| L3b | KB-SD-JWT (`kb-sd-jwt`) | Agent Key | ~5 minutes | Final checkout values for merchant |
+| Layer         | Type                          | Signed By       | Lifetime           | Purpose                            |
+| ------------- | ----------------------------- | --------------- | ------------------ | ---------------------------------- |
+| L1            | SD-JWT (`sd+jwt`)             | Issuer          | ~1 year            | Binds user identity and public key |
+| L2 Immediate  | KB-SD-JWT (`kb-sd-jwt`)       | User Public Key | ~15 minutes        | Final transaction values           |
+| L2 Autonomous | KB-SD-JWT+KB (`kb-sd-jwt+kb`) | User Public Key | 24 hours – 30 days | Constraints + agent key binding    |
+| L3a           | KB-SD-JWT (`kb-sd-jwt`)       | Agent Key       | ~5 minutes         | Final payment values for network   |
+| L3b           | KB-SD-JWT (`kb-sd-jwt`)       | Agent Key       | ~5 minutes         | Final checkout values for merchant |
 
 **`typ` values by mode:**
 
-| Layer / Mode | `typ` Value | Rationale |
-|--------------|-------------|-----------|
-| L1 | `"sd+jwt"` | Standard SD-JWT root credential. |
-| L2 Immediate | `"kb-sd-jwt"` | Standard KB-SD-JWT — no further key binding. |
+| Layer / Mode  | `typ` Value      | Rationale                                                                                    |
+| ------------- | ---------------- | -------------------------------------------------------------------------------------------- |
+| L1            | `"sd+jwt"`       | Standard SD-JWT root credential.                                                             |
+| L2 Immediate  | `"kb-sd-jwt"`    | Standard KB-SD-JWT — no further key binding.                                                 |
 | L2 Autonomous | `"kb-sd-jwt+kb"` | Signals that this KB-SD-JWT delegates to another key (the agent's) via mandate `cnf` claims. |
-| L3a, L3b | `"kb-sd-jwt"` | Terminal KB-SD-JWT — no further delegation permitted. |
+| L3a, L3b      | `"kb-sd-jwt"`    | Terminal KB-SD-JWT — no further delegation permitted.                                        |
 
 ---
 
@@ -69,34 +69,34 @@ L1 does **not** contain an `sd_hash` claim — it is the root of the delegation 
 
 ### 3.2 JWT Header
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `alg` | string | REQUIRED | Signing algorithm. MUST be `"ES256"`. |
-| `typ` | string | REQUIRED | MUST be `"sd+jwt"`. |
-| `kid` | string | REQUIRED | Key identifier for the Issuer's signing key. Used to resolve the correct key from the Issuer's JWKS endpoint. |
+| Parameter | Type   | Required | Description                                                                                                   |
+| --------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `alg`     | string | REQUIRED | Signing algorithm. MUST be `"ES256"`.                                                                         |
+| `typ`     | string | REQUIRED | MUST be `"sd+jwt"`.                                                                                           |
+| `kid`     | string | REQUIRED | Key identifier for the Issuer's signing key. Used to resolve the correct key from the Issuer's JWKS endpoint. |
 
 ### 3.3 JWT Payload — Always-Visible Claims
 
-| Claim | Type | Required | Description |
-|-------|------|----------|-------------|
-| `iss` | string | REQUIRED | Issuer identifier URI. Identifies the financial institution or payment network that signed the L1. MUST be a stable, dereferenceable URI. |
-| `sub` | string | REQUIRED | Subject identifier. An opaque, stable identifier for the user within the Issuer's system. |
-| `iat` | integer | REQUIRED | Issued-at time (Unix timestamp). |
-| `exp` | integer | REQUIRED | Expiration time (Unix timestamp). SHOULD be set to no more than 1 year from `iat`. |
-| `vct` | string | REQUIRED | Verifiable Credential Type URI. An opaque type identifier per [RFC 9901] §3.2.2.2 — not required to be a dereferenceable endpoint. Identifies the credential profile and its expected claim schema. Implementations using the Mastercard reference profile MUST use `"https://credentials.mastercard.com/card"`. See §10 for the VCT Registry. MUST be an always-visible claim (not selectively disclosable). |
-| `cnf` | object | REQUIRED | Confirmation claim per [RFC 7800]. MUST contain `cnf.jwk` with the user's public key as a JWK. |
-| `pan_last_four` | string | REQUIRED | Last four digits of the card PAN. Always visible to enable card identification without disclosing the full PAN. |
-| `scheme` | string | REQUIRED | Card network scheme identifier (e.g., `"mastercard"`, `"visa"`). Always visible. |
-| `card_id` | string | OPTIONAL | Opaque card-level identifier assigned by the Issuer. Always visible when present. Enables card-level tracking across credential reissuance without exposing the full PAN. |
-| `_sd_alg` | string | REQUIRED | Hash algorithm for selective disclosures. MUST be `"sha-256"`. |
-| `_sd` | array | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims. |
+| Claim           | Type    | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iss`           | string  | REQUIRED | Issuer identifier URI. Identifies the financial institution or payment network that signed the L1. MUST be a stable, dereferenceable URI.                                                                                                                                                                                                                                                                     |
+| `sub`           | string  | REQUIRED | Subject identifier. An opaque, stable identifier for the user within the Issuer's system.                                                                                                                                                                                                                                                                                                                     |
+| `iat`           | integer | REQUIRED | Issued-at time (Unix timestamp).                                                                                                                                                                                                                                                                                                                                                                              |
+| `exp`           | integer | REQUIRED | Expiration time (Unix timestamp). SHOULD be set to no more than 1 year from `iat`.                                                                                                                                                                                                                                                                                                                            |
+| `vct`           | string  | REQUIRED | Verifiable Credential Type URI. An opaque type identifier per [RFC 9901] §3.2.2.2 — not required to be a dereferenceable endpoint. Identifies the credential profile and its expected claim schema. Implementations using the Mastercard reference profile MUST use `"https://credentials.mastercard.com/card"`. See §10 for the VCT Registry. MUST be an always-visible claim (not selectively disclosable). |
+| `cnf`           | object  | REQUIRED | Confirmation claim per [RFC 7800]. MUST contain `cnf.jwk` with the user's public key as a JWK.                                                                                                                                                                                                                                                                                                                |
+| `pan_last_four` | string  | REQUIRED | Last four digits of the card PAN. Always visible to enable card identification without disclosing the full PAN.                                                                                                                                                                                                                                                                                               |
+| `scheme`        | string  | REQUIRED | Card network scheme identifier (e.g., `"mastercard"`, `"visa"`). Always visible.                                                                                                                                                                                                                                                                                                                              |
+| `card_id`       | string  | OPTIONAL | Opaque card-level identifier assigned by the Issuer. Always visible when present. Enables card-level tracking across credential reissuance without exposing the full PAN.                                                                                                                                                                                                                                     |
+| `_sd_alg`       | string  | REQUIRED | Hash algorithm for selective disclosures. MUST be `"sha-256"`.                                                                                                                                                                                                                                                                                                                                                |
+| `_sd`           | array   | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims.                                                                                                                                                                                                                                                                                                                                         |
 
 > **Profile-specific claims:** The claims `pan_last_four`, `scheme`, and `card_id` are defined by the Mastercard reference profile (`vct: "https://credentials.mastercard.com/card"`). Other credential profiles MAY define different required and optional claims appropriate to their payment instrument type. The structural claims (`iss`, `sub`, `iat`, `exp`, `vct`, `cnf`, `_sd_alg`, `_sd`) are required regardless of profile.
 
 ### 3.4 JWT Payload — Selectively Disclosable Claims
 
-| Claim | Type | Required | Description |
-|-------|------|----------|-------------|
+| Claim   | Type   | Required | Description                                                                                               |
+| ------- | ------ | -------- | --------------------------------------------------------------------------------------------------------- |
 | `email` | string | OPTIONAL | User's email address. Selectively disclosable. Disclosed only when needed for user identity verification. |
 
 ### 3.5 Processing Rules
@@ -148,121 +148,129 @@ L2 contains an `sd_hash` binding it to the serialized L1.
 
 ### 4.2 JWT Header
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `alg` | string | REQUIRED | MUST be `"ES256"`. |
-| `typ` | string | REQUIRED | MUST be `"kb-sd-jwt"` (Immediate mode) or `"kb-sd-jwt+kb"` (Autonomous mode). |
+| Parameter | Type   | Required | Description                                                                                                                                                                                                                     |
+| --------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `alg`     | string | REQUIRED | MUST be `"ES256"`.                                                                                                                                                                                                              |
+| `typ`     | string | REQUIRED | MUST be `"kb-sd-jwt"` (Immediate mode) or `"kb-sd-jwt+kb"` (Autonomous mode).                                                                                                                                                   |
+| `kid`     | string | OPTIONAL | Key identifier referencing the user device key bound in L1 `cnf.jwk`. When present, verifiers SHOULD use `kid` to locate the user public key within the chain; the signature MUST still verify against the key in L1 `cnf.jwk`. |
 
 ### 4.3 JWT Payload — Always-Visible Claims
 
-| Claim | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nonce` | string | REQUIRED | Cryptographically random nonce. Prevents replay attacks. |
-| `aud` | string | REQUIRED | Intended audience URI. MUST identify the payment network or verifier. |
-| `iat` | integer | REQUIRED | Issued-at time (Unix timestamp). |
-| `exp` | integer | REQUIRED | Expiration time. Immediate mode: SHOULD be no more than 15 minutes from `iat`. Autonomous mode: SHOULD be no more than 30 days from `iat`; SHOULD use the shortest duration appropriate for the use case. |
-| `sd_hash` | string | REQUIRED | Base64url-encoded SHA-256 hash of the serialized L1 SD-JWT string: `B64U(SHA-256(ASCII(serialized_L1)))`. |
-| `delegate_payload` | array | REQUIRED | Array of SD-JWT disclosure references (`{"...": "<hash>"}`) pointing to the selectively disclosable mandate claims. |
-| `_sd_alg` | string | REQUIRED | MUST be `"sha-256"`. |
-| `_sd` | array | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims. |
+| Claim              | Type    | Required | Description                                                                                                                                                                                                                                                                 |
+| ------------------ | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nonce`            | string  | REQUIRED | Cryptographically random nonce. Prevents replay attacks.                                                                                                                                                                                                                    |
+| `aud`              | string  | REQUIRED | Intended audience URI. In L2, `aud` identifies the **agent** (the party to which the user is delegating) — typically the agent platform URL. In L3a, `aud` identifies the payment network; in L3b, it identifies the merchant. See §5.3 and §5.5 for L3-specific semantics. |
+| `iss`              | string  | OPTIONAL | Issuer URI identifying the signer of this L2 credential (typically the wallet or user-agent endpoint). When present, MUST be a URI.                                                                                                                                         |
+| `iat`              | integer | REQUIRED | Issued-at time (Unix timestamp).                                                                                                                                                                                                                                            |
+| `exp`              | integer | REQUIRED | Expiration time. Immediate mode: SHOULD be no more than 15 minutes from `iat`. Autonomous mode: SHOULD be no more than 30 days from `iat`; SHOULD use the shortest duration appropriate for the use case.                                                                   |
+| `sd_hash`          | string  | REQUIRED | Base64url-encoded SHA-256 hash of the serialized L1 SD-JWT string: `B64U(SHA-256(ASCII(serialized_L1)))`.                                                                                                                                                                   |
+| `delegate_payload` | array   | REQUIRED | Array of SD-JWT disclosure references (`{"...": "<hash>"}`) pointing to the selectively disclosable mandate claims.                                                                                                                                                         |
+| `_sd_alg`          | string  | REQUIRED | MUST be `"sha-256"`.                                                                                                                                                                                                                                                        |
+| `_sd`              | array   | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims.                                                                                                                                                                                                       |
 
 ### 4.4 Immediate Mode — Mandate Claims
 
-#### 4.4.1 Immediate Checkout Mandate (`vct: "mandate.checkout"`)
+#### 4.4.1 Immediate Checkout Mandate (`vct: "mandate.checkout.1"`)
 
 The checkout mandate describes what is being purchased. In Immediate mode, the
 user has already confirmed the final checkout contents.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.checkout"`. |
-| `checkout_jwt` | string | REQUIRED | Merchant-signed JWT representing the finalized checkout contents. |
+| Field           | Type   | Required | Description                                                                                                                                                |
+| --------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vct`           | string | REQUIRED | MUST be `"mandate.checkout.1"`.                                                                                                                            |
+| `checkout_jwt`  | string | REQUIRED | Merchant-signed JWT representing the finalized checkout contents.                                                                                          |
 | `checkout_hash` | string | REQUIRED | `B64U(SHA-256(ASCII(checkout_jwt)))`. Binds the checkout mandate to the payment mandate. MUST equal `transaction_id` in the corresponding payment mandate. |
 
 **MUST NOT contain:**
+
 - `cnf` claim (no delegation in Immediate mode)
 - `constraints` array (values are final)
 
-#### 4.4.2 Immediate Payment Mandate (`vct: "mandate.payment"`)
+#### 4.4.2 Immediate Payment Mandate (`vct: "mandate.payment.1"`)
 
 The payment mandate describes how the purchase is funded. In Immediate mode,
 all values are final and confirmed by the user.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.payment"`. |
-| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See `payment_instrument` object structure below. |
-| `currency` | string | REQUIRED | ISO 4217 currency code (e.g., `"USD"`). |
-| `amount` | integer | REQUIRED | Transaction amount as an integer in minor units per ISO 4217 (e.g., `27999` = $279.99). |
-| `payee` | object | REQUIRED | Merchant/payee descriptor. See `payee` object structure below. |
-| `transaction_id` | string | REQUIRED | MUST equal `checkout_hash` from the corresponding checkout mandate: `B64U(SHA-256(ASCII(checkout_jwt)))`. |
+| Field                | Type   | Required | Description                                                                                                                                                                                 |
+| -------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vct`                | string | REQUIRED | MUST be `"mandate.payment.1"`.                                                                                                                                                              |
+| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See `payment_instrument` object structure below.                                                                                                             |
+| `payment_amount`     | object | REQUIRED | Transaction amount object containing `currency` (ISO 4217 code, e.g., `"USD"`) and `amount` (integer minor units per ISO 4217, e.g., `27999` = $279.99). Final value confirmed by the user. |
+| `payee`              | object | REQUIRED | Merchant/payee descriptor. See `payee` object structure below.                                                                                                                              |
+| `transaction_id`     | string | REQUIRED | MUST equal `checkout_hash` from the corresponding checkout mandate: `B64U(SHA-256(ASCII(checkout_jwt)))`.                                                                                   |
 
 **`payment_instrument` object structure:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | string | REQUIRED | Instrument type identifier (e.g., `"mastercard.srcDigitalCard"`). |
-| `id` | string | REQUIRED | Instrument instance identifier (e.g., a token UUID). |
-| `description` | string | OPTIONAL | Human-readable descriptor (e.g., `"Mastercard **** 1234"`). |
+| Field         | Type   | Required | Description                                                       |
+| ------------- | ------ | -------- | ----------------------------------------------------------------- |
+| `type`        | string | REQUIRED | Instrument type identifier (e.g., `"mastercard.srcDigitalCard"`). |
+| `id`          | string | REQUIRED | Instrument instance identifier (e.g., a token UUID).              |
+| `description` | string | OPTIONAL | Human-readable descriptor (e.g., `"Mastercard **** 1234"`).       |
 
 **`payee` object structure:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | OPTIONAL | Merchant identifier. When present, used as the primary key for payee matching in constraint validation. |
-| `name` | string | REQUIRED | Merchant display name. |
-| `website` | string | REQUIRED | Merchant URL. Used for merchant identification when `id` is absent. |
+| Field     | Type   | Required | Description                                                                                             |
+| --------- | ------ | -------- | ------------------------------------------------------------------------------------------------------- |
+| `id`      | string | OPTIONAL | Merchant identifier. When present, used as the primary key for payee matching in constraint validation. |
+| `name`    | string | REQUIRED | Merchant display name.                                                                                  |
+| `website` | string | REQUIRED | Merchant URL. Used for merchant identification when `id` is absent.                                     |
 
 **MUST NOT contain:**
+
 - `cnf` claim (no delegation in Immediate mode)
 - `constraints` array (values are final)
 
 ### 4.5 Autonomous Mode — Mandate Claims
 
-#### 4.5.1 Autonomous Checkout Mandate (`vct: "mandate.checkout.open"`)
+#### 4.5.1 Autonomous Checkout Mandate (`vct: "mandate.checkout.open.1"`)
 
 The checkout mandate in Autonomous mode contains constraints on what the agent
 is permitted to purchase, and binds the agent's key for L3 delegation.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.checkout.open"`. |
-| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. Structure identical to L1 `cnf` (see §3.3) plus `kid`. MUST match the `cnf` in the payment mandate of the same mandate pair. |
-| `constraints` | array | REQUIRED | Array of constraint objects bounding the agent's purchasing authority. MUST contain at least one constraint. See [constraints.md](constraints.md) for registered types. |
-| `prompt_summary` | string | OPTIONAL | Human-readable description of the user's delegated intent. |
+| Field            | Type   | Required | Description                                                                                                                                                                                                                               |
+| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vct`            | string | REQUIRED | MUST be `"mandate.checkout.open.1"`.                                                                                                                                                                                                      |
+| `cnf`            | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.jwk.kid` with a key identifier. Structure identical to L1 `cnf` (see §3.3) plus `kid`. MUST match the `cnf` in the payment mandate of the same mandate pair. |
+| `constraints`    | array  | REQUIRED | Array of constraint objects bounding the agent's purchasing authority. MUST contain at least one constraint. See [constraints.md](constraints.md) for registered types.                                                                   |
+| `prompt_summary` | string | OPTIONAL | Human-readable description of the user's delegated intent.                                                                                                                                                                                |
 
 **Nested selective disclosures (Autonomous mode):**
 
-Individual entries within `allowed_merchants` and `line_items` constraints are
+Individual entries within `allowed` and `line_items` constraints are
 themselves selectively disclosable. Each entry is a separate SD-JWT disclosure,
 referenced by hash from the constraint object. This allows the agent to disclose
 only the selected merchant or items to the verifier.
 
-#### 4.5.2 Autonomous Payment Mandate (`vct: "mandate.payment.open"`)
+#### 4.5.2 Autonomous Payment Mandate (`vct: "mandate.payment.open.1"`)
 
 The payment mandate in Autonomous mode contains constraints on payment parameters
 and binds the agent's key for L3 delegation.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.payment.open"`. |
-| `cnf` | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. MUST match the `cnf` in the checkout mandate of the same mandate pair. |
-| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure. |
-| `constraints` | array | REQUIRED | Array of constraint objects bounding the agent's payment authority. MUST contain at least one constraint. |
+| Field                | Type   | Required | Description                                                                                                                                                                         |
+| -------------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vct`                | string | REQUIRED | MUST be `"mandate.payment.open.1"`.                                                                                                                                                 |
+| `cnf`                | object | REQUIRED | Confirmation claim containing `cnf.jwk` with the agent's public key and `cnf.jwk.kid` with a key identifier. MUST match the `cnf` in the checkout mandate of the same mandate pair. |
+| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure.                                                                                                                            |
+| `risk_data`          | object | OPTIONAL | Device fingerprinting signals captured at consent time. Keys: `device_id` (string, optional), `ip_address` (string, optional). Both fields optional; appears only in L2.            |
+| `constraints`        | array  | REQUIRED | Array of constraint objects bounding the agent's payment authority. MUST contain at least one constraint.                                                                           |
 
 > **Note**: Recurrence terms (subscription setup, agent-managed recurring purchases) are
-> expressed as constraint types (`payment.recurrence`, `payment.agent_recurrence`) within
+> expressed as constraint types (`mandate.payment.recurrence`, `mandate.payment.agent_recurrence`) within
 > the `constraints` array. See [constraints.md](constraints.md) §4.6 and §4.7 for schemas.
 
-#### 4.5.3 Payment Reference Constraint (`payment.reference`)
+> **Note**: `risk_data` carries user-device signals for downstream fraud/risk
+> scoring. It is never propagated into L3 credentials — its purpose is to let
+> issuers and networks correlate the L2 consent event with device telemetry.
 
-The Autonomous payment mandate MUST include a `payment.reference` constraint
+#### 4.5.3 Payment Reference Constraint (`mandate.payment.reference`)
+
+The Autonomous payment mandate MUST include a `mandate.payment.reference` constraint
 with a `conditional_transaction_id` that binds the payment mandate to its
 corresponding checkout mandate at the L2 disclosure level:
 
 ```json
 {
-  "type": "payment.reference",
+  "type": "mandate.payment.reference",
   "conditional_transaction_id": "<hash-of-checkout-mandate-disclosure>"
 }
 ```
@@ -280,7 +288,7 @@ See [constraints.md §4.8](constraints.md#48-paymentreference--checkout-payment-
 > values serving different binding purposes.
 
 > **Note**: Constraint type definitions, value schemas, and machine-enforceability
-> designations for all registered `mandate.checkout.*` and `payment.*` types are
+> designations for all registered `mandate.checkout.*` and `mandate.payment.*` types are
 > specified in [constraints.md](constraints.md). Machine-enforceable constraints
 > (amount range, allowed payee, merchant, line items) MUST be verified by verifiers;
 > descriptive fields (product description, brand, color, size) are informational
@@ -288,13 +296,13 @@ See [constraints.md §4.8](constraints.md#48-paymentreference--checkout-payment-
 
 ### 4.6 `cnf` Claim Presence Rules
 
-Mode is inferred from VCT values in L2 mandates: open VCTs (`mandate.checkout.open`, `mandate.payment.open`) indicate Autonomous mode; final VCTs (`mandate.checkout`, `mandate.payment`) indicate Immediate mode. The `cnf` presence rules below are then enforced as structural requirements consistent with the inferred mode:
+Mode is inferred from VCT values in L2 mandates: open VCTs (`mandate.checkout.open.1`, `mandate.payment.open.1`) indicate Autonomous mode; final VCTs (`mandate.checkout.1`, `mandate.payment.1`) indicate Immediate mode. The `cnf` presence rules below are then enforced as structural requirements consistent with the inferred mode:
 
-| Layer / Mode | `cnf` Claim | Requirement |
-|-------------|------------|-------------|
-| L2 Immediate mandates | Absent | MUST NOT contain `cnf`. No delegation occurs; the user directly confirms final values. |
-| L2 Autonomous mandates | Present | MUST contain `cnf.jwk` with the agent's public key and `cnf.kid` with a key identifier. Both checkout and payment mandates in a pair MUST contain identical `cnf` values (`jwk` and `kid`). |
-| L3 payloads (all) | Absent | MUST NOT contain `cnf`. Terminal delegation — no further key binding is permitted. The agent proves key possession via the `kid` header parameter, which verifiers resolve against L2 `cnf.kid` and `cnf.jwk`. |
+| Layer / Mode           | `cnf` Claim | Requirement                                                                                                                                                                                                                               |
+| ---------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L2 Immediate mandates  | Absent      | MUST NOT contain `cnf`. No delegation occurs; the user directly confirms final values.                                                                                                                                                    |
+| L2 Autonomous mandates | Present     | MUST contain `cnf.jwk` with the agent's public key, and `cnf.jwk` MUST include a `kid` member as its key identifier. Both checkout and payment mandates in a pair MUST contain identical `cnf.jwk` values (including the embedded `kid`). |
+| L3 payloads (all)      | Absent      | MUST NOT contain `cnf`. Terminal delegation — no further key binding is permitted. The agent proves key possession via the `kid` header parameter, which verifiers resolve against L2 `cnf.jwk.kid` and `cnf.jwk`.                        |
 
 ### 4.7 Processing Rules — L2 Verification
 
@@ -328,24 +336,24 @@ claim (terminal delegation — no further key binding is permitted).
 
 ### 5.2 JWT Header (L3a and L3b)
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `alg` | string | REQUIRED | MUST be `"ES256"`. |
-| `typ` | string | REQUIRED | MUST be `"kb-sd-jwt"`. |
-| `kid` | string | REQUIRED | Key identifier. MUST match `cnf.kid` in the Layer 2 mandates. Verifiers resolve the agent's public key from L2 `cnf.jwk` by matching this `kid` value, rather than trusting a self-asserted key in the L3 header. |
+| Parameter | Type   | Required | Description                                                                                                                                                                                                           |
+| --------- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `alg`     | string | REQUIRED | MUST be `"ES256"`.                                                                                                                                                                                                    |
+| `typ`     | string | REQUIRED | MUST be `"kb-sd-jwt"`.                                                                                                                                                                                                |
+| `kid`     | string | REQUIRED | Key identifier. MUST match `cnf.jwk.kid` in the Layer 2 mandates. Verifiers resolve the agent's public key from L2 `cnf.jwk` by matching this `kid` value, rather than trusting a self-asserted key in the L3 header. |
 
 ### 5.3 JWT Payload — Always-Visible Claims (L3a and L3b)
 
-| Claim | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nonce` | string | REQUIRED | Cryptographically random nonce. MUST be distinct from the L2 nonce. |
-| `aud` | string | REQUIRED | Intended audience URI. L3a: payment network URI. L3b: merchant URI. |
-| `iat` | integer | REQUIRED | Issued-at time (Unix timestamp). |
-| `exp` | integer | REQUIRED | Expiration time. RECOMMENDED: 5 minutes from `iat`. MUST NOT exceed 1 hour from `iat`. |
-| `sd_hash` | string | REQUIRED | Selective `sd_hash` binding to L2. See §5.4. |
-| `delegate_payload` | array | REQUIRED | Array of SD-JWT disclosure references pointing to the selectively disclosable mandate claims. |
-| `_sd_alg` | string | REQUIRED | MUST be `"sha-256"`. |
-| `_sd` | array | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims. |
+| Claim              | Type    | Required | Description                                                                                   |
+| ------------------ | ------- | -------- | --------------------------------------------------------------------------------------------- |
+| `nonce`            | string  | REQUIRED | Cryptographically random nonce. MUST be distinct from the L2 nonce.                           |
+| `aud`              | string  | REQUIRED | Intended audience URI. L3a: payment network URI. L3b: merchant URI.                           |
+| `iat`              | integer | REQUIRED | Issued-at time (Unix timestamp).                                                              |
+| `exp`              | integer | REQUIRED | Expiration time. RECOMMENDED: 5 minutes from `iat`. MUST NOT exceed 1 hour from `iat`.        |
+| `sd_hash`          | string  | REQUIRED | Selective `sd_hash` binding to L2. See §5.4.                                                  |
+| `delegate_payload` | array   | REQUIRED | Array of SD-JWT disclosure references pointing to the selectively disclosable mandate claims. |
+| `_sd_alg`          | string  | REQUIRED | MUST be `"sha-256"`.                                                                          |
+| `_sd`              | array   | REQUIRED | Array of SD-JWT disclosure hashes for selectively disclosable claims.                         |
 
 ### 5.4 Selective `sd_hash` for L3
 
@@ -360,32 +368,34 @@ This selective binding preserves the privacy boundary: L3a does not require
 checkout disclosures, and L3b does not require payment disclosures. Verifiers
 recompute `sd_hash` using the same selective approach per L3 type.
 
-### 5.5 Final Checkout Mandate — L3b (`vct: "mandate.checkout"`)
+### 5.5 Final Checkout Mandate — L3b (`vct: "mandate.checkout.1"`)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.checkout"`. |
-| `checkout_jwt` | string | REQUIRED | Merchant-signed JWT representing the finalized checkout. See §6.3 for `checkout_jwt` schema guidance. |
-| `checkout_hash` | string | REQUIRED | `B64U(SHA-256(ASCII(checkout_jwt)))`. MUST equal `transaction_id` in L3a. |
-| `line_items` | array | OPTIONAL | Array of purchased line items as selected from L2 constraints. |
-| `prompt_summary` | string | OPTIONAL | Human-readable summary of the agent's purchase selection. |
+| Field            | Type   | Required | Description                                                                                           |
+| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------- |
+| `vct`            | string | REQUIRED | MUST be `"mandate.checkout.1"`.                                                                       |
+| `checkout_jwt`   | string | REQUIRED | Merchant-signed JWT representing the finalized checkout. See §6.3 for `checkout_jwt` schema guidance. |
+| `checkout_hash`  | string | REQUIRED | `B64U(SHA-256(ASCII(checkout_jwt)))`. MUST equal `transaction_id` in L3a.                             |
+| `line_items`     | array  | OPTIONAL | Array of purchased line items as selected from L2 constraints.                                        |
+| `prompt_summary` | string | OPTIONAL | Human-readable summary of the agent's purchase selection.                                             |
 
 **MUST NOT contain:**
+
 - `cnf` claim (no further delegation from the agent)
 - `constraints` array (values are final)
 
-### 5.6 Final Payment Mandate — L3a (`vct: "mandate.payment"`)
+### 5.6 Final Payment Mandate — L3a (`vct: "mandate.payment.1"`)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `vct` | string | REQUIRED | MUST be `"mandate.payment"`. |
-| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure. |
-| `payment_amount` | object | REQUIRED | Transaction amount object containing `currency` (ISO 4217 code, e.g., `"USD"`) and `amount` (integer minor units per ISO 4217, e.g., `27999` = $279.99). MUST satisfy the `payment.amount` constraint range from L2. |
-| `payee` | object | REQUIRED | Merchant/payee descriptor. See §4.4.2 for `payee` object structure. |
-| `transaction_id` | string | REQUIRED | MUST equal `checkout_hash` in L3b: `B64U(SHA-256(ASCII(checkout_jwt)))`. |
-| `selected_merchant` | object | OPTIONAL | Selectively disclosable. The selected merchant, disclosed from the L2 `allowed_merchant` constraint. |
+| Field                | Type   | Required | Description                                                                                                                                                                                                                        |
+| -------------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vct`                | string | REQUIRED | MUST be `"mandate.payment.1"`.                                                                                                                                                                                                     |
+| `payment_instrument` | object | REQUIRED | Payment instrument descriptor. See §4.4.2 for structure.                                                                                                                                                                           |
+| `payment_amount`     | object | REQUIRED | Transaction amount object containing `currency` (ISO 4217 code, e.g., `"USD"`) and `amount` (integer minor units per ISO 4217, e.g., `27999` = $279.99). MUST satisfy the `mandate.payment.amount_range` constraint range from L2. |
+| `payee`              | object | REQUIRED | Merchant/payee descriptor. See §4.4.2 for `payee` object structure.                                                                                                                                                                |
+| `transaction_id`     | string | REQUIRED | MUST equal `checkout_hash` in L3b: `B64U(SHA-256(ASCII(checkout_jwt)))`.                                                                                                                                                           |
+| `selected_merchant`  | object | OPTIONAL | Selectively disclosable. The selected merchant, disclosed from the L2 `mandate.checkout.allowed_merchants` constraint.                                                                                                             |
 
 **MUST NOT contain:**
+
 - `cnf` claim (no further delegation from the agent — terminal delegation)
 - `constraints` array (values are final)
 
@@ -395,7 +405,7 @@ recompute `sd_hash` using the same selective approach per L3 type.
 
 ### 5.7 Processing Rules — L3 Verification
 
-1. Verifiers MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching the L3 header `kid` against L2 `cnf.kid`.
+1. Verifiers MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching the L3 header `kid` against L2 `cnf.jwk.kid`.
 2. Verifiers MUST verify the ES256 signature on L3 against the resolved key from L2 `cnf.jwk`.
 3. Verifiers MUST verify L3 `typ` header is `"kb-sd-jwt"`.
 4. Verifiers MUST verify L3 `sd_hash` against the selective L2 presentation (see §5.4).
@@ -419,14 +429,14 @@ preventing substitution or tampering.
    `B64U(SHA-256(ASCII(serialized_L1)))`, where `serialized_L1` is the complete
    SD-JWT string as received (base JWT + `~` + disclosures + trailing `~`).
 
-   > **Note on partial disclosure**: The L2 signer computes `sd_hash` over the 
-   > L1 presentation they actually received. This may include only a subset of 
-   > L1's selectively disclosable claims — the L2 signer cannot and need not 
-   > hash claims that were never disclosed to them. The principle: `sd_hash` 
-   > binds to "the serialized form as received by the signer," not "all possible 
+   > **Note on partial disclosure**: The L2 signer computes `sd_hash` over the
+   > L1 presentation they actually received. This may include only a subset of
+   > L1's selectively disclosable claims — the L2 signer cannot and need not
+   > hash claims that were never disclosed to them. The principle: `sd_hash`
+   > binds to "the serialized form as received by the signer," not "all possible
    > L1 disclosures that exist."
 
-3. Layer 3 `sd_hash` MUST equal
+2. Layer 3 `sd_hash` MUST equal
    `B64U(SHA-256(ASCII(layer2_selective_presentation)))`, where
    `layer2_selective_presentation` includes only the disclosures intended for
    that Layer 3's recipient (see §5.4):
@@ -450,8 +460,9 @@ hash = B64U(SHA-256(ASCII(checkout_jwt)))
 - Payment mandates carry the same value as `transaction_id`.
 
 In Autonomous mode:
+
 - L3b `checkout_hash` and L3a `transaction_id` MUST be equal.
-- The L2 payment mandate carries a `payment.reference` constraint with
+- The L2 payment mandate carries a `mandate.payment.reference` constraint with
   `conditional_transaction_id` as a pre-commitment before the checkout JWT exists.
 
 Verifiers MUST recompute the hash from the disclosed `checkout_jwt` and compare
@@ -473,9 +484,9 @@ verification procedure for `checkout_jwt` are **implementation-defined**.
 3. Verifiers that have access to the merchant's public key SHOULD verify the
    `checkout_jwt` signature before accepting the checkout mandate.
 
-**Conditional requirement — `allowed_merchant` enforcement:**
+**Conditional requirement — `mandate.checkout.allowed_merchants` enforcement:**
 
-When the L2 checkout mandate contains an `allowed_merchant` constraint, the `checkout_jwt` payload MUST include a machine-readable merchant identifier (`id` field matching the merchant object schema). Without it, verifiers cannot populate `fulfillment.merchant` and the allowlist constraint cannot be enforced. Implementations that issue `allowed_merchant` constraints MUST ensure their `checkout_jwt` schema provides this field.
+When the L2 checkout mandate contains an `mandate.checkout.allowed_merchants` constraint, the `checkout_jwt` payload MUST include a machine-readable merchant identifier (`id` field matching the merchant object schema). Without it, verifiers cannot populate `fulfillment.merchant` and the allowlist constraint cannot be enforced. Implementations that issue `mandate.checkout.allowed_merchants` constraints MUST ensure their `checkout_jwt` schema provides this field.
 
 **Practical role in Immediate mode:** In Immediate mode, the agent creates the `checkout_jwt` representing the cart contents during the checkout interaction. The merchant has the opportunity to record the checkout session details at this point. When L2 is later presented to the merchant with the checkout mandate disclosed, the merchant validates the `checkout_jwt` contents against its own catalog and checkout records — confirming that the items, quantities, and prices represent a valid order. If the `checkout_jwt` is merchant-signed (per the SHOULD guidance above), the merchant can also verify its own signature for additional integrity assurance. The user's L2 signature proves they authorized this specific checkout. See the [Specification Overview §7](README.md#7-credential-lifecycle) for the full Immediate mode flow.
 
@@ -489,12 +500,12 @@ In Autonomous mode, the same validation applies at L3b: the agent creates a `che
 
 ## 7. Credential Lifetime
 
-| Credential | Recommended Lifetime | Maximum Lifetime | Notes |
-|------------|---------------------|-----------------|-------|
-| Layer 1 | 1 year | 1 year | Long-lived root credential. |
-| Layer 2 (Immediate) | 15 minutes | 15 minutes | User-present confirmation; short-lived. |
-| Layer 2 (Autonomous) | 24 hours – 30 days | MUST NOT exceed L1 `exp` | RECOMMENDED default: 30 days for consumer use cases. Use the shortest duration appropriate for the use case. A one-time delegated purchase may need only 24 hours; a price-watching agent may need 30 days. When an autonomous mandate expires before the agent fulfills it, the implementation SHOULD prompt the user to re-authorize. Implementations SHOULD prefer the shortest duration that satisfies the use case. |
-| Layer 3a, L3b | 5 minutes | 1 hour | Short-lived to limit replay window. RECOMMENDED: 5 minutes. |
+| Credential           | Recommended Lifetime | Maximum Lifetime         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Layer 1              | 1 year               | 1 year                   | Long-lived root credential.                                                                                                                                                                                                                                                                                                                                                                                              |
+| Layer 2 (Immediate)  | 15 minutes           | 15 minutes               | User-present confirmation; short-lived.                                                                                                                                                                                                                                                                                                                                                                                  |
+| Layer 2 (Autonomous) | 24 hours – 30 days   | MUST NOT exceed L1 `exp` | RECOMMENDED default: 30 days for consumer use cases. Use the shortest duration appropriate for the use case. A one-time delegated purchase may need only 24 hours; a price-watching agent may need 30 days. When an autonomous mandate expires before the agent fulfills it, the implementation SHOULD prompt the user to re-authorize. Implementations SHOULD prefer the shortest duration that satisfies the use case. |
+| Layer 3a, L3b        | 5 minutes            | 1 hour                   | Short-lived to limit replay window. RECOMMENDED: 5 minutes.                                                                                                                                                                                                                                                                                                                                                              |
 
 ---
 
@@ -508,7 +519,7 @@ of exactly one checkout mandate and one payment mandate, linked by a pair identi
 - **Immediate mode**: pair identifier is `checkout_hash` (present on both mandates as
   `checkout_hash` and `transaction_id`).
 - **Autonomous mode**: pair identifier is `conditional_transaction_id` in the
-  `payment.reference` constraint of the payment mandate.
+  `mandate.payment.reference` constraint of the payment mandate.
 
 V0.1 supports multiple mandate pairs within a single L2, enabling multi-merchant
 purchases (each pair targets a different merchant). **Split-tender** — where a
@@ -524,7 +535,7 @@ their pair identifier. The pairing algorithm works as follows:
   `B64U(SHA-256(ASCII(checkout_jwt)))`. The payment mandate whose
   `transaction_id` equals this hash is the pair partner.
 - **Autonomous mode**: For each payment mandate, extract
-  `conditional_transaction_id` from its `payment.reference` constraint. The
+  `conditional_transaction_id` from its `mandate.payment.reference` constraint. The
   checkout mandate whose disclosure hash equals this value is the pair partner.
 
 Verifiers MUST:
@@ -553,8 +564,8 @@ Mandates are delivered as selectively disclosable entries within the
 ```json
 {
   "delegate_payload": [
-    {"...": "<hash-of-checkout-mandate-disclosure>"},
-    {"...": "<hash-of-payment-mandate-disclosure>"}
+    { "...": "<hash-of-checkout-mandate-disclosure>" },
+    { "...": "<hash-of-payment-mandate-disclosure>" }
   ]
 }
 ```
@@ -565,7 +576,7 @@ provided disclosures.
 
 ### 9.2 Nested Disclosures (Autonomous Mode)
 
-In Autonomous mode, individual entries within `allowed_merchants` and `line_items`
+In Autonomous mode, individual entries within `allowed` and `line_items`
 constraints are themselves selectively disclosable. Each entry is a separate
 SD-JWT disclosure, referenced by hash from the constraint object. This allows the
 agent to disclose only the selected merchant or items to each verifier.
@@ -576,17 +587,23 @@ agent to disclose only the selected merchant or items to each verifier.
 
 The following VCT values are defined for VI v0.1:
 
-| VCT Value | Description |
-|-----------|-------------|
+| VCT Value                                 | Description                                          |
+| ----------------------------------------- | ---------------------------------------------------- |
 | `https://credentials.mastercard.com/card` | L1 payment credential (Mastercard reference profile) |
-| `mandate.checkout.open` | Checkout mandate — open/unfulfilled (L2 Autonomous) |
-| `mandate.checkout` | Checkout mandate — final (L2 Immediate, L3b) |
-| `mandate.payment.open` | Payment mandate — open/unfulfilled (L2 Autonomous) |
-| `mandate.payment` | Payment mandate — final (L2 Immediate, L3a) |
+| `mandate.checkout.open.1`                 | Checkout mandate — open/unfulfilled (L2 Autonomous)  |
+| `mandate.checkout.1`                      | Checkout mandate — final (L2 Immediate, L3b)         |
+| `mandate.payment.open.1`                  | Payment mandate — open/unfulfilled (L2 Autonomous)   |
+| `mandate.payment.1`                       | Payment mandate — final (L2 Immediate, L3a)          |
 
 Implementations MUST reject mandates with unrecognized or malformed VCT values.
 
 > **Note:** VCT values are opaque type identifiers per [RFC 9901] §3.2.2.2. They uniquely identify a credential type but are not required to be dereferenceable URLs. The L1 VCT (`https://credentials.mastercard.com/card`) is the Mastercard reference profile identifier; actual credential providers define and publish their own VCT URIs.
+
+### 10.1 VCT Versioning
+
+Mandate VCT URIs carry a trailing numeric version suffix (`.1` for VI v0.1) so verifiers and issuers can negotiate schema compatibility. When VI introduces a breaking change to a mandate schema, the suffix increments (e.g. `mandate.payment.1` → `mandate.payment.2`) while the unversioned stem remains stable. Verifiers MUST match on the fully versioned VCT; implementations that accept multiple versions do so by listing each version explicitly.
+
+The L1 VCT (`https://credentials.mastercard.com/card`) is governed by its credential provider and is not versioned by VI. Constraint `type` strings (e.g. `mandate.payment.budget`) are NOT VCTs and are not versioned — constraint type evolution is handled via the constraints registry in [constraints.md](constraints.md).
 
 ---
 
@@ -609,8 +626,8 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
     "<hash-of-payment-mandate-disclosure>"
   ],
   "delegate_payload": [
-    {"...": "<hash-of-checkout-mandate-disclosure>"},
-    {"...": "<hash-of-payment-mandate-disclosure>"}
+    { "...": "<hash-of-checkout-mandate-disclosure>" },
+    { "...": "<hash-of-payment-mandate-disclosure>" }
   ]
 }
 ```
@@ -619,7 +636,7 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 
 ```json
 {
-  "vct": "mandate.checkout",
+  "vct": "mandate.checkout.1",
   "checkout_jwt": "<merchant-signed-jwt>",
   "checkout_hash": "abc123def456..."
 }
@@ -629,14 +646,16 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 
 ```json
 {
-  "vct": "mandate.payment",
+  "vct": "mandate.payment.1",
   "payment_instrument": {
     "type": "mastercard.srcDigitalCard",
     "id": "f199c3dd-7106-478b-9b5f-7af9ca725170",
     "description": "Mastercard **** 1234"
   },
-  "currency": "USD",
-  "amount": 27999,
+  "payment_amount": {
+    "currency": "USD",
+    "amount": 27999
+  },
   "payee": {
     "name": "AudioShop Inc.",
     "website": "https://audioshop.example.com"
@@ -662,8 +681,8 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
     "<hash-of-payment-constraint-mandate-disclosure>"
   ],
   "delegate_payload": [
-    {"...": "<hash-of-checkout-constraint-mandate-disclosure>"},
-    {"...": "<hash-of-payment-constraint-mandate-disclosure>"}
+    { "...": "<hash-of-checkout-constraint-mandate-disclosure>" },
+    { "...": "<hash-of-payment-constraint-mandate-disclosure>" }
   ]
 }
 ```
@@ -672,29 +691,27 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 
 ```json
 {
-  "vct": "mandate.checkout.open",
+  "vct": "mandate.checkout.open.1",
   "cnf": {
-    "kid": "agent-key-1",
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
       "x": "agent-public-key-x-component",
-      "y": "agent-public-key-y-component"
+      "y": "agent-public-key-y-component",
+      "kid": "agent-key-1"
     }
   },
   "constraints": [
     {
-      "type": "mandate.checkout.allowed_merchant",
-      "allowed_merchants": [
-        {"...": "<hash-of-audioshop-disclosure>"},
-        {"...": "<hash-of-soundstore-disclosure>"}
+      "type": "mandate.checkout.allowed_merchants",
+      "allowed": [
+        { "...": "<hash-of-audioshop-disclosure>" },
+        { "...": "<hash-of-soundstore-disclosure>" }
       ]
     },
     {
       "type": "mandate.checkout.line_items",
-      "items": [
-        {"...": "<hash-of-headphones-item-disclosure>"}
-      ]
+      "items": [{ "...": "<hash-of-headphones-item-disclosure>" }]
     }
   ],
   "prompt_summary": "Buy wireless headphones under $300 from approved merchants"
@@ -705,14 +722,14 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 
 ```json
 {
-  "vct": "mandate.payment.open",
+  "vct": "mandate.payment.open.1",
   "cnf": {
-    "kid": "agent-key-1",
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
       "x": "agent-public-key-x-component",
-      "y": "agent-public-key-y-component"
+      "y": "agent-public-key-y-component",
+      "kid": "agent-key-1"
     }
   },
   "payment_instrument": {
@@ -722,20 +739,23 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
   },
   "constraints": [
     {
-      "type": "payment.amount",
+      "type": "mandate.payment.amount_range",
       "currency": "USD",
       "min": 0,
       "max": 30000
     },
     {
-      "type": "payment.allowed_payee",
-      "allowed_payees": [
-        { "name": "AudioShop Inc.", "website": "https://audioshop.example.com" },
+      "type": "mandate.payment.allowed_payees",
+      "allowed": [
+        {
+          "name": "AudioShop Inc.",
+          "website": "https://audioshop.example.com"
+        },
         { "name": "SoundStore", "website": "https://soundstore.example.com" }
       ]
     },
     {
-      "type": "payment.reference",
+      "type": "mandate.payment.reference",
       "conditional_transaction_id": "checkout-ref-9f3a2b1c"
     }
   ]
@@ -745,6 +765,7 @@ Implementations MUST reject mandates with unrecognized or malformed VCT values.
 #### L3a — Final Payment Mandate (Autonomous, to payment network)
 
 JWT header:
+
 ```json
 {
   "alg": "ES256",
@@ -754,6 +775,7 @@ JWT header:
 ```
 
 JWT payload (always-visible):
+
 ```json
 {
   "nonce": "c9d1e2f3a4b5c6d7",
@@ -767,23 +789,26 @@ JWT payload (always-visible):
     "<hash-of-selected-merchant-disclosure>"
   ],
   "delegate_payload": [
-    {"...": "<hash-of-payment-mandate-disclosure>"},
-    {"...": "<hash-of-selected-merchant-disclosure>"}
+    { "...": "<hash-of-payment-mandate-disclosure>" },
+    { "...": "<hash-of-selected-merchant-disclosure>" }
   ]
 }
 ```
 
 Payment mandate disclosure (L3a):
+
 ```json
 {
-  "vct": "mandate.payment",
+  "vct": "mandate.payment.1",
   "payment_instrument": {
     "type": "mastercard.srcDigitalCard",
     "id": "f199c3dd-7106-478b-9b5f-7af9ca725170",
     "description": "Mastercard **** 1234"
   },
-  "currency": "USD",
-  "amount": 27999,
+  "payment_amount": {
+    "currency": "USD",
+    "amount": 27999
+  },
   "payee": {
     "name": "AudioShop Inc.",
     "website": "https://audioshop.example.com"
@@ -795,6 +820,7 @@ Payment mandate disclosure (L3a):
 #### L3b — Final Checkout Mandate (Autonomous, to merchant)
 
 JWT header:
+
 ```json
 {
   "alg": "ES256",
@@ -804,6 +830,7 @@ JWT header:
 ```
 
 JWT payload (always-visible):
+
 ```json
 {
   "nonce": "d8e2f4a5b6c7d8e9",
@@ -817,16 +844,17 @@ JWT payload (always-visible):
     "<hash-of-selected-items-disclosure>"
   ],
   "delegate_payload": [
-    {"...": "<hash-of-checkout-mandate-disclosure>"},
-    {"...": "<hash-of-selected-items-disclosure>"}
+    { "...": "<hash-of-checkout-mandate-disclosure>" },
+    { "...": "<hash-of-selected-items-disclosure>" }
   ]
 }
 ```
 
 Checkout mandate disclosure (L3b):
+
 ```json
 {
-  "vct": "mandate.checkout",
+  "vct": "mandate.checkout.1",
   "checkout_jwt": "<merchant-signed-jwt>",
   "checkout_hash": "abc123def456...",
   "line_items": [
@@ -878,9 +906,9 @@ A conformant L2 construction implementation:
 2. MUST compute `sd_hash` as `B64U(SHA-256(ASCII(serialized_L1)))`.
 3. MUST set `typ` to `"kb-sd-jwt"` (Immediate) or `"kb-sd-jwt+kb"` (Autonomous).
 4. In Immediate mode: mandates MUST contain final values and MUST NOT contain `cnf` claims.
-5. In Autonomous mode: mandates MUST contain `cnf.jwk` binding the agent's key and `cnf.kid` with the key identifier, and MUST contain at least one constraint.
+5. In Autonomous mode: mandates MUST contain `cnf.jwk` binding the agent's key and `cnf.jwk.kid` with the key identifier, and MUST contain at least one constraint.
 6. In Immediate mode: MUST compute `checkout_hash` and include it in the checkout mandate and as `transaction_id` in the payment mandate.
-7. In Autonomous mode: MUST include a `payment.reference` constraint with `conditional_transaction_id` in the payment mandate.
+7. In Autonomous mode: MUST include a `mandate.payment.reference` constraint with `conditional_transaction_id` in the payment mandate.
 8. MUST use VCT values exactly as defined in the VCT Registry (§10).
 
 ### 13.3 Agent (L3) Conformance
@@ -889,10 +917,10 @@ A conformant Agent implementation:
 
 1. MUST create two KB-SD-JWTs (L3a, L3b) signed by the key bound in L2 mandate `cnf.jwk`.
 2. MUST set `typ` to `"kb-sd-jwt"` in both L3a and L3b.
-3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.kid`. MUST NOT include a `jwk` parameter in L3 headers.
+3. MUST include a `kid` parameter in each L3 JWT header matching L2 `cnf.jwk.kid`. MUST NOT include a `jwk` parameter in L3 headers.
 4. MUST NOT include a `cnf` claim in L3 payloads.
 5. MUST compute selective `sd_hash` for each L3 per §5.4.
-6. MUST represent `amount` as an integer in minor units in L3a final mandates.
+6. MUST represent `payment_amount.amount` as an integer in minor units in L3a final mandates.
 7. MUST produce final values satisfying all L2 constraints.
 8. MUST ensure `L3a.transaction_id == L3b.checkout_hash`.
 9. RECOMMENDED: set L3 `exp` to 5 minutes from `iat`. MUST NOT exceed 1 hour.
@@ -907,12 +935,12 @@ A conformant Verifier implementation:
 4. MUST verify the delegation chain (L1 `cnf` → L2 signer; L2 mandate `cnf` → L3 signer).
 5. MUST verify `sd_hash` bindings between adjacent layers.
 6. MUST check `exp` at all layers (clock skew tolerance: 300 seconds recommended).
-7. In Autonomous mode: MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching L3 header `kid` against L2 `cnf.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
+7. In Autonomous mode: MUST resolve the agent's public key from L2 mandate `cnf.jwk` by matching L3 header `kid` against L2 `cnf.jwk.kid`. MUST NOT trust a self-asserted `jwk` in L3 headers.
 8. In Autonomous mode: MUST reject any L3 payload containing a `cnf` claim.
 9. When both checkout and payment mandates are disclosed: MUST verify `checkout_hash == transaction_id`.
 10. MUST check L3 values against disclosed L2 constraints. Machine-enforceable constraints MUST be verified; descriptive fields are informational.
 11. When receiving partial L2 disclosures: MUST still verify structural chain (signatures, `sd_hash`, key delegation). At least one mandate disclosure is REQUIRED in Autonomous mode to extract the agent delegation key.
-12. MUST verify L3a `amount` is an integer in minor units before comparing against L2 constraints.
+12. MUST verify L3a `payment_amount.amount` is an integer in minor units before comparing against L2 constraints.
 
 ---
 

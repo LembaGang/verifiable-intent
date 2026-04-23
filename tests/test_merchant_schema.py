@@ -56,8 +56,8 @@ def test_merchant_missing_name_fails():
     result = check_constraints(
         [
             {
-                "type": "payment.allowed_payee",
-                "allowed_payees": [{"website": "https://tw.com"}],
+                "type": "mandate.payment.allowed_payees",
+                "allowed": [{"website": "https://tw.com"}],
             }
         ],
         {"payee": {"website": "https://tw.com"}},
@@ -76,8 +76,8 @@ def test_allowed_merchant_name_fallback():
     result = check_constraints(
         [
             {
-                "type": "mandate.checkout.allowed_merchant",
-                "allowed_merchants": [{"name": "Tennis Warehouse", "website": "https://tw.com"}],
+                "type": "mandate.checkout.allowed_merchants",
+                "allowed": [{"name": "Tennis Warehouse", "website": "https://tw.com"}],
             }
         ],
         {"merchant": {"name": "Tennis Warehouse", "website": "https://tw.com"}},
@@ -150,8 +150,8 @@ def test_allowed_merchant_all_sd_refs_skips():
     result = check_constraints(
         [
             {
-                "type": "mandate.checkout.allowed_merchant",
-                "allowed_merchants": [{"...": "abc123"}, {"...": "def456"}],
+                "type": "mandate.checkout.allowed_merchants",
+                "allowed": [{"...": "abc123"}, {"...": "def456"}],
             }
         ],
         {"merchant": {"id": "m-1", "name": "Tennis Warehouse", "website": "https://tw.com"}},
@@ -166,8 +166,8 @@ def test_allowed_payee_all_sd_refs_skips():
     result = check_constraints(
         [
             {
-                "type": "payment.allowed_payee",
-                "allowed_payees": [{"...": "abc123"}],
+                "type": "mandate.payment.allowed_payees",
+                "allowed": [{"...": "abc123"}],
             }
         ],
         {"payee": {"id": "m-1", "name": "Tennis Warehouse", "website": "https://tw.com"}},

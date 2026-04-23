@@ -143,11 +143,9 @@ def create_layer2_autonomous(
 
         # Replace merchant/item refs in constraints — scoped to constraint's subset
         for c in checkout_dict.get("constraints", []):
-            if c.get("type") == "mandate.checkout.allowed_merchant":
-                original_merchants = c.get("allowed_merchants", [])
-                c["allowed_merchants"] = _match_merchant_refs(
-                    original_merchants, mandate.merchants, merchant_disc_hashes
-                )
+            if c.get("type") == "mandate.checkout.allowed_merchants":
+                original_merchants = c.get("allowed", [])
+                c["allowed"] = _match_merchant_refs(original_merchants, mandate.merchants, merchant_disc_hashes)
             elif c.get("type") == "mandate.checkout.line_items":
                 for item_entry in c.get("items", []):
                     original_items = item_entry.get("acceptable_items", [])
@@ -163,13 +161,13 @@ def create_layer2_autonomous(
     if mandate.payment_mandate:
         payment_dict = mandate.payment_mandate.to_dict()
 
-        # Replace payee refs in allowed_payee constraint — scoped to constraint's subset
+        # Replace payee refs in allowed_payees constraint — scoped to constraint's subset
         for c in payment_dict.get("constraints", []):
-            if c.get("type") == "payment.allowed_payee":
-                original_allowed = c.get("allowed_payees", [])
-                c["allowed_payees"] = _match_merchant_refs(original_allowed, mandate.merchants, merchant_disc_hashes)
+            if c.get("type") == "mandate.payment.allowed_payees":
+                original_allowed = c.get("allowed", [])
+                c["allowed"] = _match_merchant_refs(original_allowed, mandate.merchants, merchant_disc_hashes)
 
-        # Inject payment.reference constraint binding checkout ↔ payment
+        # Inject mandate.payment.reference constraint binding checkout ↔ payment
         if checkout_disc is not None:
             checkout_disc_hash = hash_disclosure(checkout_disc)
             ref_constraint = ReferenceConstraint(

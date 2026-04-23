@@ -80,18 +80,18 @@ def _build_autonomous_chain():
     l1_ser = l1.serialize()
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -114,8 +114,8 @@ def _build_autonomous_chain():
     l2_ser = l2.serialize()
     l2_base_jwt = l2_ser.split("~")[0]
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -195,12 +195,12 @@ def _build_immediate_chain():
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
         checkout_hash=c_hash,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],

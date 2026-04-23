@@ -56,11 +56,11 @@ def _make_autonomous_l2(l1_ser, payment_mandate, now=None):
     from verifiable_intent import CheckoutMandate
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk,
         cnf_kid="agent-key-1",
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}]
             ),
@@ -92,7 +92,7 @@ class TestOpenPaymentMandateRequiresPaymentInstrument:
 
         agent = get_agent_keys()
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             # payment_instrument intentionally omitted
@@ -120,7 +120,7 @@ class TestAllowedMerchantsNonDictElements:
     def test_allowed_payee_non_dict_elements_no_crash(self):
         """check_constraints must not crash when allowed_merchants contains non-dicts."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "Shop"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "Shop"}]}],
             {
                 "payee": {"id": "m1", "name": "Shop"},
                 "allowed_merchants": [None, "bad", 42, {"id": "m1", "name": "Shop"}],
@@ -132,7 +132,7 @@ class TestAllowedMerchantsNonDictElements:
     def test_allowed_payee_all_non_dict_no_crash(self):
         """check_constraints must not crash when every element of allowed_merchants is non-dict."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": [{"id": "m1", "name": "Shop"}]}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": [{"id": "m1", "name": "Shop"}]}],
             {
                 "payee": {"id": "m1", "name": "Shop"},
                 "allowed_merchants": [None, "bad", 42],
@@ -144,7 +144,7 @@ class TestAllowedMerchantsNonDictElements:
     def test_allowed_merchant_non_dict_elements_no_crash(self):
         """check_constraints must not crash when allowed_merchants has non-dicts (merchant variant)."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": [{"id": "m1", "name": "Shop"}]}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": [{"id": "m1", "name": "Shop"}]}],
             {
                 "merchant": {"id": "m1", "name": "Shop"},
                 "allowed_merchants": [None, "bad", 1, {"id": "m1", "name": "Shop"}],
@@ -169,7 +169,7 @@ class TestDelegatePayloadNonList:
 
         # Build a valid autonomous L2, then mutate delegate_payload to non-list
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -234,7 +234,7 @@ class TestPaymentAmountMissingBounds:
     def test_payment_amount_missing_max_passes(self):
         """payment.amount with min-only is valid (max is optional — no upper bound)."""
         result = check_constraints(
-            [{"type": "payment.amount", "currency": "USD", "min": 10000}],
+            [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000}],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
         )
         assert result.satisfied
@@ -242,7 +242,7 @@ class TestPaymentAmountMissingBounds:
     def test_payment_amount_missing_min(self):
         """payment.amount with max-only is valid per AP2 schema (min is optional — no lower bound)."""
         result = check_constraints(
-            [{"type": "payment.amount", "currency": "USD", "max": 40000}],
+            [{"type": "mandate.payment.amount_range", "currency": "USD", "max": 40000}],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
         )
         assert result.satisfied
@@ -251,7 +251,7 @@ class TestPaymentAmountMissingBounds:
     def test_payment_amount_missing_both_passes(self):
         """payment.amount with neither min nor max is valid (no bounds enforced)."""
         result = check_constraints(
-            [{"type": "payment.amount", "currency": "USD"}],
+            [{"type": "mandate.payment.amount_range", "currency": "USD"}],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
         )
         assert result.satisfied
@@ -259,7 +259,7 @@ class TestPaymentAmountMissingBounds:
     def test_payment_amount_both_present_passes(self):
         """payment.amount with both min and max present still passes as before."""
         result = check_constraints(
-            [{"type": "payment.amount", "currency": "USD", "min": 10000, "max": 40000}],
+            [{"type": "mandate.payment.amount_range", "currency": "USD", "min": 10000, "max": 40000}],
             {"payment_amount": {"amount": 27999, "currency": "USD"}},
         )
         assert result.satisfied
@@ -273,7 +273,7 @@ class TestEmptyAllowlists:
     def test_allowed_payee_missing_allowed_field(self):
         """payment.allowed_payee with no 'allowed_payees' field must be a violation."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee"}],
+            [{"type": "mandate.payment.allowed_payees"}],
             {"payee": {"id": "m1", "name": "Shop"}},
         )
         assert not result.satisfied
@@ -282,7 +282,7 @@ class TestEmptyAllowlists:
     def test_allowed_payee_empty_allowed_field(self):
         """payment.allowed_payee with empty 'allowed_payees' list must be a violation."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": []}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": []}],
             {"payee": {"id": "m1", "name": "Shop"}},
         )
         assert not result.satisfied
@@ -290,7 +290,7 @@ class TestEmptyAllowlists:
     def test_allowed_merchant_missing_merchants_field(self):
         """allowed_merchant with no 'allowed_merchants' field must be a violation."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant"}],
+            [{"type": "mandate.checkout.allowed_merchants"}],
             {"merchant": {"id": "m1", "name": "Shop"}},
         )
         assert not result.satisfied
@@ -299,7 +299,7 @@ class TestEmptyAllowlists:
     def test_allowed_merchant_empty_merchants_field(self):
         """allowed_merchant with empty 'allowed_merchants' list must be a violation."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": []}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": []}],
             {"merchant": {"id": "m1", "name": "Shop"}},
         )
         assert not result.satisfied
@@ -312,7 +312,7 @@ class TestPaymentAmountMinOptional:
     def test_max_only_exceeds_max_fails(self):
         """max-only constraint fails when amount > max."""
         result = check_constraints(
-            [{"type": "payment.amount", "currency": "USD", "max": 40000}],
+            [{"type": "mandate.payment.amount_range", "currency": "USD", "max": 40000}],
             {"payment_amount": {"amount": 40001, "currency": "USD"}},
         )
         assert not result.satisfied
@@ -340,7 +340,7 @@ class TestAllowedListTypeValidation:
     def test_allowed_payee_non_list_allowed_fails(self):
         """payment.allowed_payee with non-list 'allowed_payees' is always a violation (not bypassed by fulfillment)."""
         result = check_constraints(
-            [{"type": "payment.allowed_payee", "allowed_payees": "oops"}],
+            [{"type": "mandate.payment.allowed_payees", "allowed": "oops"}],
             {"payee": {"id": "m1", "name": "Shop"}, "allowed_merchants": [{"id": "m1", "name": "Shop"}]},
         )
         assert not result.satisfied
@@ -349,7 +349,7 @@ class TestAllowedListTypeValidation:
     def test_allowed_merchant_non_list_merchants_fails(self):
         """mandate.checkout.allowed_merchant with non-list 'allowed_merchants' is always a violation."""
         result = check_constraints(
-            [{"type": "mandate.checkout.allowed_merchant", "allowed_merchants": "oops"}],
+            [{"type": "mandate.checkout.allowed_merchants", "allowed": "oops"}],
             {"merchant": {"id": "m1", "name": "Shop"}, "allowed_merchants": [{"id": "m1", "name": "Shop"}]},
         )
         assert not result.satisfied

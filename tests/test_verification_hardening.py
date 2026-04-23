@@ -100,11 +100,11 @@ def _make_immediate_l2(user, l1, now):
     c_hash = checkout_hash_from_jwt(checkout_jwt)
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout",
+        vct="mandate.checkout.1",
         checkout_jwt=checkout_jwt,
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment",
+        vct="mandate.payment.1",
         currency="USD",
         amount=27999,
         payee=MERCHANTS[0],
@@ -144,18 +144,18 @@ def _make_autonomous_chain(
     l1_ser = l1.serialize()
 
     checkout_mandate = CheckoutMandate(
-        vct="mandate.checkout.open",
+        vct="mandate.checkout.open.1",
         cnf_jwk=agent.public_jwk if include_checkout_cnf else None,
         cnf_kid="agent-key-1" if include_checkout_cnf else None,
         constraints=[
-            AllowedMerchantConstraint(allowed_merchants=MERCHANTS),
+            AllowedMerchantConstraint(allowed=MERCHANTS),
             CheckoutLineItemsConstraint(
                 items=[{"id": "line-item-1", "acceptable_items": ACCEPTABLE_ITEMS[:1], "quantity": 1}],
             ),
         ],
     )
     payment_mandate = PaymentMandate(
-        vct="mandate.payment.open",
+        vct="mandate.payment.open.1",
         cnf_jwk=agent.public_jwk if include_payment_cnf else None,
         cnf_kid="agent-key-1" if include_payment_cnf else None,
         payment_instrument=PAYMENT_INSTRUMENT,
@@ -178,8 +178,8 @@ def _make_autonomous_chain(
     l2_ser = l2.serialize()
     l2_base_jwt = l2_ser.split("~")[0]
 
-    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
-    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open")
+    payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
+    checkout_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.checkout.open.1")
     merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
     item_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("id") == "BAB86345")
 
@@ -277,7 +277,7 @@ class TestDualMandateCnfCrossCheck:
         l1 = _make_l1(issuer, user, now)
 
         checkout_mandate = CheckoutMandate(
-            vct="mandate.checkout.open",
+            vct="mandate.checkout.open.1",
             cnf_jwk=agent.public_jwk,
             cnf_kid="agent-key-1",
             constraints=[
@@ -287,7 +287,7 @@ class TestDualMandateCnfCrossCheck:
             ],
         )
         payment_mandate = PaymentMandate(
-            vct="mandate.payment.open",
+            vct="mandate.payment.open.1",
             cnf_jwk=public_key_to_jwk(other_key),  # Different key!
             cnf_kid="agent-key-1",
             payment_instrument=PAYMENT_INSTRUMENT,
@@ -313,7 +313,7 @@ class TestDualMandateCnfCrossCheck:
         l2_base_jwt = l2_ser.split("~")[0]
         merchant = get_merchant_keys()
 
-        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open")
+        payment_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("vct") == "mandate.payment.open.1")
         merchant_disc = _find_disclosure(l2, lambda v: isinstance(v, dict) and v.get("name") == "Tennis Warehouse")
 
         checkout_jwt = create_checkout_jwt([{"sku": "BAB86345", "quantity": 1}], merchant)
@@ -376,7 +376,7 @@ class TestDualMandateCnfCrossCheck:
         fake_mandate_disc = create_disclosure(
             None,
             {
-                "vct": "mandate.checkout.open",
+                "vct": "mandate.checkout.open.1",
                 "cnf": {"jwk": chain["agent"].public_jwk},
             },
         )
