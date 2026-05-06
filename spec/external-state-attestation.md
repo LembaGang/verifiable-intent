@@ -617,13 +617,51 @@ accident. Each type's MUST-implement choice is defensible from its reference
 implementation's signing stack; the extension sets ensure verifier libraries
 can evolve without spec revisions.
 
+**Algorithm-deprecation discipline.** Algorithm deprecation within a
+registered family member is a per-type concern. Type specification authors
+SHOULD specify, in the type's specification, a deprecation mechanism for
+the type's MUST-implement algorithm before that algorithm is needed —
+including the conditions under which the algorithm is deprecated, the
+timeline for verifier migration to a successor MUST-implement, and the
+backward-compatibility guarantees during the transition. The family-wide
+obligation is structural: every type specification MUST declare its current
+MUST-implement algorithm, and verifiers MUST honour the declaration without
+fallback. Deprecation discipline ensures that the family does not inherit a
+brittle commitment to any specific algorithm beyond the cryptographic
+lifetime that algorithm provides.
+
+**`environment.market_state` deprecation mechanism.**
+
+- **Conditions.** A successor MUST-implement is declared in a minor-version
+  revision of this specification when (a) cryptographic guidance from a
+  recognized standards body (NIST, IRTF CFRG, an update to [RFC 8032] or
+  [RFC 8725]) recommends migration away from the current MUST-implement, or
+  (b) the current MUST-implement is broken in the cryptographic literature
+  in a way that affects the type's threat model.
+- **Timeline.** The minor-version revision declaring the successor specifies
+  a verifier-migration window of at least 12 months from publication. During
+  the window, verifiers MUST accept attestations signed under either the
+  current MUST-implement or the successor. After the window's end date
+  (named in the minor-version revision), verifiers MUST reject attestations
+  signed under the deprecated algorithm.
+- **Backward compatibility.** Mandate issuers SHOULD migrate to the
+  successor as soon as their attestation issuer supports it. Attestation
+  issuers signal successor-algorithm support by publishing the new key in
+  the [RFC 8615] well-known key registry at
+  `{issuer}/.well-known/oracle-keys.json`; verifiers detect issuer
+  readiness via standard key-set inspection of that registry.
+
 > **Note on family coordination**: This section is drafted in lockstep with
 > [§4.7 of `environment.wallet_state`](./environment-wallet-state.md). The
 > two specs declare different MUST-implement algorithms (Ed25519 here, ES256
 > in wallet_state) for reasons tied to their reference implementations' signing
-> stacks, but share the agility framework, the extension-set model, and the
-> fail-closed-negotiation requirement. One family-wide question, one answer,
-> two specs.
+> stacks, but share the agility framework, the extension-set model, the
+> fail-closed-negotiation requirement, and the family-wide algorithm-
+> deprecation discipline (the algorithm-agnostic policy paragraph,
+> single-algorithm lock-in paragraph, and family-wide deprecation paragraph
+> are verbatim-portable; per-type MUST-implement table rows and the per-type
+> deprecation mechanism block are the per-type swap surface). One family-wide
+> question, one answer, two specs.
 
 ### 4.8 Field Scope Declaration
 
@@ -1104,6 +1142,7 @@ def check_market_state_constraint(constraint: dict, now: datetime = None) -> dic
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.5.11-draft | 2026-05-06 | **§4.7 algorithm-deprecation discipline (family-wide + per-type)** — adds family-wide algorithm-deprecation prose to §4.7 mirroring `draft-borthwick-msebenzi-environment-state-00 v0.2-draft` §4.3 family-wide SHOULD (type specification authors SHOULD specify a deprecation mechanism for the type's MUST-implement algorithm before that algorithm is needed, including conditions, timeline for verifier migration, and backward-compatibility guarantees during the transition). Adds per-type `environment.market_state` deprecation mechanism: **conditions** (NIST / IRTF CFRG / RFC 8032 / RFC 8725 update guidance, or cryptographic break in the literature affecting the type's threat model), **timeline** (≥12-month verifier-migration window from minor-version revision publication; parallel verification during window; verifier rejection of deprecated algorithm after the window's end date), **backward compatibility** (mandate-issuer migration upon attestation-issuer key-registry readiness; verifier-side detection via standard key-set inspection of the [RFC 8615] well-known key registry at `{issuer}/.well-known/oracle-keys.json`). Updates §4.7 PR #22 coordination Note to reflect the family-wide algorithm-deprecation discipline as a co-equal element of the lockstep pattern alongside the agility framework, extension-set model, and fail-closed-negotiation requirement. Closes §3.4(5) family-membership obligation under the I-D family-definition contract. Mirror of PR #22 v0.6.5-draft commit [`66185a1`](https://github.com/agent-intent/verifiable-intent/pull/22/commits/66185a1) by Douglas Borthwick (InsumerAPI). Document header stays at `0.5-draft` per patch-level convention established at v0.5.1 and reaffirmed at v0.5.3 / v0.5.4 / v0.5.5 / v0.5.6 / v0.5.7 / v0.5.8 / v0.5.9 / v0.5.10. No algorithm changes; no security-model changes; no §4 schema changes; no Headless Oracle code changes required. Co-drafted with Douglas Borthwick (InsumerAPI); family-wide prose (algorithm-agnostic policy paragraph, single-algorithm lock-in paragraph, family-wide deprecation paragraph) byte-identical to PR #22 §4.7 per the existing lockstep pattern. |
 | 0.5.10-draft | 2026-05-04 | **Six corrections per Douglas Borthwick's May 4 review of v0.5.7–v0.5.9**: (1) D.2 Organisation row corrected to "InsumerAPI (insumermodel.com)" — InsumerAPI is the entity operating the `environment.wallet_state` issuer infrastructure (RFC 6982 reference implementation), mirroring D.1's "Headless Oracle (headlessoracle.com)" pattern. (2) §9 v0.5.7-draft row body updated correspondingly to "InsumerAPI (Douglas Borthwick)". (3) D.2 Agent-native key provisioning row updated to "USDC/USDT/BTC on-chain payment" matching production behaviour at `POST /v1/keys/buy` (USDC and USDT on EVM chains and Solana, BTC on Bitcoin) per PR #22 v0.6.4 commit `fc6d955` §7.4. (4) §9 v0.5.8-draft and v0.5.9-draft row bodies updated to remove co-author attribution since both patches were HO-side housekeeping (v0.5.8 was a §7.1 stale-text catch-up against the live HO deployment; v0.5.9 was a D.1 coverage paragraph trim driven by the ISO/convention `mic_type` discrepancy at HO's `/v5/exchanges`). The v0.5.8 and v0.5.9 commit message trailers were also dropped via amend+rebase to align prose with shipped trailer state. Only v0.5.7 (Appendix D listing both implementations as shared editorial work) warranted the co-author attribution and retains it. (5) D.2 License row added between the existing Reference verifier row and the closing prose paragraph, mirroring D.1's License-row pattern, with final wording "Proprietary. Copyright 2026 Douglas Borthwick." Two-sentence form is the cleaner default matching the posture across other published surfaces; spec body does not carry patent-prosecution context where it would not serve standards-track readers. Structural alignment between D.1 and D.2 (whether D.2 needs Operational Since, Architectural rationale, or other rows mirroring D.1) is a separate question and out of scope for v0.5.10. Document header stays at `0.5-draft`; v0.5.10 is a patch-level refinement stacked on v0.5.9 / v0.5.8 / v0.5.7 (not independent). No semantic changes to spec body, no algorithm changes, no security-model changes, no §4 schema changes, no Headless Oracle code changes required, test count unchanged. Co-drafted with Douglas Borthwick. |
 | 0.5.9-draft | 2026-05-03 | **Appendix D.1 coverage paragraph**: removed explicit ISO/convention count breakdown (the parenthetical "(25 venues)" and "(3 venues)" qualifiers) in favour of structurally-aligned wording with §7.1 and a runtime-anchored pointer to `GET /v5/exchanges` for authoritative per-venue `mic_type` categorisation. The explicit count breakdown was an editorial precision claim requiring external verification of each venue's ISO-registration status (the live `mic_type` field at `/v5/exchanges` reports a different split than the v0.5.7 D.1 wording asserted), and matches the spec's general posture of runtime-anchoring claims about deployment state rather than editorial-anchoring them. No change to the MIC list, the coverage count (28), or any other D.1 row. No semantic changes to spec body. Document header stays at `0.5-draft`; v0.5.9 is a patch-level refinement stacked on v0.5.8 (not independent). No algorithm changes, no security-model changes, no §4 schema changes, no Headless Oracle code changes required, test count unchanged. |
 | 0.5.8-draft | 2026-05-03 | **§7.1 reference implementation catch-up to Appendix D.1**: updates the Headless Oracle "Supported exchanges" row from "23 global exchanges" to "28 global exchanges" and replaces the §7.1 prose MIC enumeration with the verified 28-MIC list (XNYS, XNAS, XLON, XJPX, XPAR, XHKG, XSES, XASX, XBOM, XNSE, XSHG, XSHE, XKRX, XJSE, XBSP, XSWX, XMIL, XIST, XSAU, XDFM, XNZE, XHEL, XSTO, XCBT, XNYM, XCBO, XCOI, XBIN), aligning §7.1 with Appendix D.1 shipped at v0.5.7. The §7.1 prose was a stale residue from the original v0.1-draft (Mar 17 2026), which described coverage of 23 exchanges before the XCBT, XNYM, XCBO, XCOI, and XBIN extensions landed in the live deployment; v0.5.8 catches the spec text up to the live state without changing the §7.1 structure. **§9 Changelog v0.5.6 row backfill**: inserts the previously omitted v0.5.6-draft row between v0.5.7 and v0.5.5 (commit `68f4db4` modified inline VCT examples and §5.5 Block 3 prose for PR #23 field-alignment-v2 propagation but did not record a row at the time). Cross-section structural alignment between §7.1 and Appendix D.1 (e.g., adding `Reference verifier` and `Architectural rationale` rows to the §7.1 table mirroring D.1) is intentionally out of scope for this revision and left for a future patch; v0.5.8 is scoped strictly to the count, MIC list, and changelog backfill. Document header stays at `0.5-draft`; v0.5.8 is a patch-level refinement stacked on v0.5.7 (not independent). No algorithm changes, no security-model changes, no §4 schema changes, no Headless Oracle code changes required, test count unchanged. |
